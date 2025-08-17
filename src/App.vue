@@ -53,6 +53,9 @@
 
   <!-- Botones flotantes de redes sociales -->
   <SocialFloating />
+
+  <!-- Contenedor de notificaciones -->
+  <NotificationContainer />
 </template>
 
 <script setup lang="ts">
@@ -62,6 +65,7 @@ import { onMounted, ref, watch } from 'vue';
 import router from './router';
 import ThemeToggle from '@/components/ThemeToggle.vue';
 import SocialFloating from '@/components/SocialFloating.vue';
+import NotificationContainer from '@/components/NotificationContainer.vue';
 
 const isLoggedIn = ref(false);
 const username = ref('');

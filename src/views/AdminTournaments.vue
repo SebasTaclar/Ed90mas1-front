@@ -56,6 +56,7 @@
                 <th>Categorías</th>
                 <th>Fechas</th>
                 <th>Equipos</th>
+                <th>Configuración</th>
                 <th>Estado</th>
                 <th>Acciones</th>
               </tr>
@@ -92,12 +93,38 @@
                     {{ getRegisteredTeamsCount(tournament.id) }} equipos
                   </span>
                 </td>
+                <td class="configuration-status">
+                  <div v-if="tournament.configuration?.isConfigured" class="config-badge configured">
+                    <span class="config-icon">⚙️</span>
+                    <div class="config-details">
+                      <div class="config-text">Configurado</div>
+                      <div class="config-groups">{{ tournament.configuration.numberOfGroups }} grupo{{
+                        tournament.configuration.numberOfGroups > 1 ? 's' : '' }}</div>
+                    </div>
+                  </div>
+                  <div v-else class="config-badge not-configured">
+                    <span class="config-icon">❌</span>
+                    <div class="config-details">
+                      <div class="config-text">Sin configurar</div>
+                      <div class="config-groups">Requerido para cronogramas</div>
+                    </div>
+                  </div>
+                </td>
                 <td class="status">
                   <span class="status-badge" :class="tournament.isActive ? 'active' : 'inactive'">
                     {{ tournament.isActive ? 'Activo' : 'Inactivo' }}
                   </span>
                 </td>
                 <td class="actions">
+                  <button @click="openConfigModal(tournament)" class="btn-action config" title="Configurar torneo"
+                    :class="{
+                      'configured': tournament.configuration?.isConfigured,
+                      'loading': loading && selectedTournament?.id === tournament.id
+                    }" :disabled="loading && selectedTournament?.id === tournament.id">
+                    <span v-if="loading && selectedTournament?.id === tournament.id">⏳ Cargando...</span>
+                    <span v-else-if="tournament.configuration?.isConfigured">⚙️ Reconfigurar</span>
+                    <span v-else>⚙️ Configurar</span>
+                  </button>
                   <button @click="openEditModal(tournament)" class="btn-action edit" title="Editar torneo">
                     Editar
                   </button>
@@ -118,7 +145,7 @@
             <div class="no-tournaments-icon">🏆</div>
             <p>No hay torneos registrados {{ selectedStatusFilter
               || selectedCategoryFilter ? ' con los filtros aplicados' : ''
-            }}</p>
+              }}</p>
           </div>
         </div>
       </div>
@@ -127,6 +154,11 @@
     <!-- Modal para crear/editar torneo -->
     <UpsertTournamentPopup v-if="showUpsertModal" :tournament-data="selectedTournament" :mode="modalMode"
       @close="closeUpsertModal" @save="handleTournamentSave" />
+
+    <!-- Modal para configurar torneo -->
+    <TournamentConfigurationPopup v-if="showConfigModal" :key="selectedTournament?.id"
+      :tournament-data="selectedTournament" :registered-teams="getRegisteredTeamsByTournament(selectedTournament?.id)"
+      @close="closeConfigModal" @save="handleConfigurationSave" />
 
     <!-- Modal de confirmación para eliminar -->
     <ConfirmationModal v-if="showDeleteModal" :title="'Eliminar Torneo'"
@@ -139,12 +171,15 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import type { Tournament } from '@/types/TournamentType'
-import type { Category } from '@/types/CategoryType'
+import type { Tournament, TournamentConfiguration } from '@/types/TournamentType'
 import { useTournaments } from '@/composables/useTournaments'
 import { useCategories } from '@/composables/useCategories'
+import { useTeams } from '@/composables/useTeams'
+import { useTournamentConfiguration } from '@/composables/useTournamentConfiguration'
+import { useNotifications } from '@/utils/notifications'
 import Spinner from '@/components/Spinner.vue'
 import UpsertTournamentPopup from '@/components/UpsertTournamentPopup.vue'
+import TournamentConfigurationPopup from '@/components/TournamentConfigurationPopup.vue'
 import ConfirmationModal from '@/components/ConfirmationModal.vue'
 
 defineOptions({
@@ -154,6 +189,12 @@ defineOptions({
 // Estado de la aplicación
 const { tournaments, loadTournaments, deleteTournament, deleteTournamentBanner } = useTournaments()
 const { categories, loadCategories } = useCategories()
+const { teams, loadTeams } = useTeams()
+const {
+  createConfiguration,
+  updateConfiguration,
+} = useTournamentConfiguration()
+const { success, error } = useNotifications()
 const loading = ref(false)
 const selectedStatusFilter = ref<string>('')
 const selectedCategoryFilter = ref<string>('')
@@ -162,6 +203,9 @@ const selectedCategoryFilter = ref<string>('')
 const showUpsertModal = ref(false)
 const selectedTournament = ref<Tournament | null>(null)
 const modalMode = ref<'create' | 'edit'>('create')
+
+// Modal de configuración
+const showConfigModal = ref(false)
 
 // Modal de eliminación
 const showDeleteModal = ref(false)
@@ -196,6 +240,7 @@ const filteredTournaments = computed(() => {
 const loadData = async () => {
   await loadTournaments()
   await loadCategories()
+  await loadTeams() // Agregamos la carga de equipos
 }
 
 const openCreateModal = () => {
@@ -220,6 +265,85 @@ const handleTournamentSave = async () => {
   closeUpsertModal()
 }
 
+// Funciones para configuración de torneo
+const openConfigModal = async (tournament: Tournament) => {
+  // Limpiar selección anterior
+  selectedTournament.value = null
+
+  // Pequeña pausa para asegurar que el estado se limpia
+  await new Promise(resolve => setTimeout(resolve, 10))
+
+  // Asignar el nuevo torneo
+  selectedTournament.value = { ...tournament }
+
+  console.log('Abriendo configuración para torneo:', tournament.id, tournament.name)
+
+  // El torneo seleccionado ya contiene toda la información necesaria
+  // El popup se encargará de cargar la configuración existente si está presente
+
+  showConfigModal.value = true
+}
+
+const closeConfigModal = () => {
+  showConfigModal.value = false
+  selectedTournament.value = null
+}
+
+const handleConfigurationSave = async (configuration: TournamentConfiguration) => {
+  if (selectedTournament.value && selectedTournament.value.id) {
+    try {
+      loading.value = true
+      let savedConfiguration: TournamentConfiguration
+
+      // Determinar si es una configuración nueva o una actualización
+      const isUpdating = selectedTournament.value.configuration?.isConfigured
+
+      if (isUpdating) {
+        savedConfiguration = await updateConfiguration(selectedTournament.value.id, {
+          numberOfGroups: configuration.numberOfGroups,
+          teamsPerGroup: configuration.teamsPerGroup,
+          teamAssignments: configuration.teamAssignments || [],
+          isConfigured: true
+        })
+
+        success(
+          'Configuración actualizada',
+          `Se actualizó la configuración del torneo "${selectedTournament.value.name}" con ${configuration.numberOfGroups} grupo${configuration.numberOfGroups > 1 ? 's' : ''}.`
+        )
+      } else {
+        savedConfiguration = await createConfiguration(selectedTournament.value.id, {
+          numberOfGroups: configuration.numberOfGroups,
+          teamsPerGroup: configuration.teamsPerGroup,
+          teamAssignments: configuration.teamAssignments || []
+        })
+
+        success(
+          'Configuración creada',
+          `Se configuró el torneo "${selectedTournament.value.name}" con ${configuration.numberOfGroups} grupo${configuration.numberOfGroups > 1 ? 's' : ''}.`
+        )
+      }
+
+      // Actualizar el torneo local con la configuración guardada
+      selectedTournament.value.configuration = savedConfiguration
+
+      // Recargar la lista para reflejar los cambios
+      await loadData()
+
+    } catch (err) {
+      console.error('Error saving configuration:', err)
+      const errorMessage = err instanceof Error ? err.message : 'Error desconocido'
+
+      error(
+        'Error al guardar',
+        `No se pudo guardar la configuración del torneo: ${errorMessage}`
+      )
+    } finally {
+      loading.value = false
+    }
+  }
+  closeConfigModal()
+}
+
 // Funciones para eliminación
 const confirmDelete = (tournament: Tournament) => {
   tournamentToDelete.value = tournament
@@ -240,7 +364,6 @@ const handleDelete = async () => {
     // Primero intentar eliminar el banner si existe
     if (tournamentToDelete.value.bannerPath) {
       try {
-        console.log('Eliminando banner del torneo...')
         await deleteTournamentBanner(tournamentToDelete.value.id)
       } catch (bannerError) {
         console.warn('No se pudo eliminar el banner del torneo:', bannerError)
@@ -259,36 +382,24 @@ const handleDelete = async () => {
   }
 }
 
-// TODO: Implementar cuando los endpoints estén disponibles
-const toggleTournamentStatus = async (tournament: Tournament) => {
-  console.log('Toggle status para:', tournament.name, '- Funcionalidad no implementada aún')
-  // loading.value = true
-  // try {
-  //   const result = tournament.isActive
-  //     ? await deactivateTournament(tournament.id)
-  //     : await activateTournament(tournament.id)
-  //
-  //   if (result.success) {
-  //     await loadData()
-  //   }
-  // } catch (error) {
-  //   console.error('Error al cambiar estado del torneo:', error)
-  // } finally {
-  //   loading.value = false
-  // }
+const getRegisteredTeamsByTournament = (tournamentId: number | undefined) => {
+  if (!tournamentId || !teams.value) return [];
+
+  // TODO: Filtrar equipos reales por tornamentId cuando tengamos la relación
+  // Por ahora retornamos equipos de ejemplo para demostración
+  return teams.value.slice(0, 8).map((team, index) => ({
+    id: team.id || index + 1,
+    name: team.name || `Equipo ${index + 1}`,
+    // Otras propiedades del equipo...
+  }));
 }
 
-// Función para obtener nombres de categoría a partir de los datos del torneo
-const getCategoriesNames = (tournament: Tournament): string => {
-  return tournament.tournamentCategories
-    ?.map(tc => tc.category.name)
-    .join(', ') || 'Sin categorías';
-};
+const getRegisteredTeamsCount = (tournamentId: number | undefined) => {
+  if (!tournamentId || !teams.value) return 0;
 
-// TODO: Implementar cuando tengamos el servicio real de equipos
-const getRegisteredTeamsCount = (tournamentId: number): number => {
-  // Por ahora retornar 0 hasta que implementemos el servicio real de equipos
-  return 0;
+  // TODO: Filtrar equipos reales por tornamentId cuando tengamos la relación
+  // Por ahora retornamos un número de equipos de ejemplo para demostración
+  return Math.min(teams.value.length, 8); // Límite de 8 equipos por torneo
 }
 
 const formatDate = (dateString: string): string => {
@@ -547,6 +658,62 @@ onMounted(async () => {
   font-weight: 500;
 }
 
+.configuration-status {
+  min-width: 150px;
+}
+
+.config-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border-radius: var(--border-radius-md);
+  font-size: 0.8rem;
+}
+
+.config-badge.configured {
+  background: #d4edda;
+  border: 1px solid #c3e6cb;
+}
+
+:root[data-theme='dark'] .config-badge.configured {
+  background: rgba(40, 167, 69, 0.15);
+  border-color: rgba(40, 167, 69, 0.3);
+}
+
+.config-badge.not-configured {
+  background: #f8d7da;
+  border: 1px solid #f1aeb5;
+}
+
+:root[data-theme='dark'] .config-badge.not-configured {
+  background: rgba(220, 53, 69, 0.15);
+  border-color: rgba(220, 53, 69, 0.3);
+}
+
+.config-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.config-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.config-text {
+  font-weight: 600;
+  color: var(--app-text-primary);
+}
+
+.config-groups {
+  font-size: 0.7rem;
+  opacity: 0.8;
+  color: var(--app-text-secondary);
+}
+
 .status-badge {
   padding: 0.25rem 0.75rem;
   border-radius: var(--border-radius-xl);
@@ -598,6 +765,29 @@ onMounted(async () => {
 .btn-action.activate {
   background: #d4edda;
   color: #155724;
+}
+
+.btn-action.config {
+  background: #e2e6ea;
+  color: #495057;
+}
+
+.btn-action.config.configured {
+  background: #d1ecf1;
+  color: #0c5460;
+  border: 1px solid #bee5eb;
+}
+
+.btn-action.config.loading {
+  background: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeaa7;
+  cursor: wait;
+}
+
+.btn-action.config:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .btn-action:hover {
