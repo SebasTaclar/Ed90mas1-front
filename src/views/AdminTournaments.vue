@@ -128,8 +128,7 @@
                   <button @click="openEditModal(tournament)" class="btn-action edit" title="Editar torneo">
                     Editar
                   </button>
-                  <button @click="toggleTournamentStatus(tournament)" class="btn-action"
-                    :class="tournament.isActive ? 'deactivate' : 'activate'"
+                  <button class="btn-action" :class="tournament.isActive ? 'deactivate' : 'activate'"
                     :title="tournament.isActive ? 'Desactivar torneo' : 'Activar torneo'">
                     {{ tournament.isActive ? 'Desactivar' : 'Activar' }}
                   </button>
@@ -145,7 +144,7 @@
             <div class="no-tournaments-icon">🏆</div>
             <p>No hay torneos registrados {{ selectedStatusFilter
               || selectedCategoryFilter ? ' con los filtros aplicados' : ''
-              }}</p>
+            }}</p>
           </div>
         </div>
       </div>
