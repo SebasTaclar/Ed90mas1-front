@@ -145,7 +145,7 @@
             <div class="no-tournaments-icon">🏆</div>
             <p>No hay torneos registrados {{ selectedStatusFilter
               || selectedCategoryFilter ? ' con los filtros aplicados' : ''
-            }}</p>
+              }}</p>
           </div>
         </div>
       </div>
@@ -275,8 +275,6 @@ const openConfigModal = async (tournament: Tournament) => {
 
   // Asignar el nuevo torneo
   selectedTournament.value = { ...tournament }
-
-  console.log('Abriendo configuración para torneo:', tournament.id, tournament.name)
 
   // El torneo seleccionado ya contiene toda la información necesaria
   // El popup se encargará de cargar la configuración existente si está presente

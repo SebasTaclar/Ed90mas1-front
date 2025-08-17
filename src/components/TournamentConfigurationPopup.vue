@@ -45,7 +45,8 @@
               <div class="input-group" v-if="localConfiguration.numberOfGroups">
                 <label>Equipos por Grupo</label>
                 <div class="teams-distribution">
-                  {{ Math.ceil(registeredTeams.length / localConfiguration.numberOfGroups) }} equipos aprox.
+                  {{ registeredTeams.length > 0 ? Math.ceil(registeredTeams.length / localConfiguration.numberOfGroups)
+                    : 0 }} equipos aprox.
                 </div>
               </div>
             </div> <!-- Vista previa de grupos -->
@@ -188,6 +189,12 @@ const isConfigurationLoaded = ref(false); // Nueva variable para evitar cargas m
 
 // Computed properties
 const availableGroupNumbers = computed(() => {
+  // Si no hay equipos registrados, permitir configuración de 1 a 8 grupos
+  if (props.registeredTeams.length === 0) {
+    return Array.from({ length: 8 }, (_, i) => i + 1);
+  }
+
+  // Si hay equipos, limitar el número de grupos al número de equipos (máximo 8)
   const maxGroups = Math.min(props.registeredTeams.length, 8);
   return Array.from({ length: maxGroups }, (_, i) => i + 1);
 });
@@ -209,21 +216,6 @@ const warnings = computed(() => {
 
   return warns;
 });
-
-const canSave = computed(() => {
-  return localConfiguration.value.numberOfGroups > 0 &&
-    previewGroups.value.length > 0 &&
-    previewGroups.value.some(group => group.teams.length > 0) &&
-    !isCreatingConfiguration.value &&
-    !isSaving.value;
-});// Debug computed para mostrar el estado
-const debugInfo = computed(() => ({
-  localConfiguration: localConfiguration.value,
-  previewGroups: previewGroups.value,
-  canSave: canSave.value,
-  loading: loading.value,
-  registeredTeamsCount: props.registeredTeams.length
-}));
 
 // Computed para mensajes informativos del botón
 const saveButtonStatus = computed(() => {
@@ -408,7 +400,8 @@ const saveConfiguration = async () => {
       numberOfGroups: localConfiguration.value.numberOfGroups,
       teamsPerGroup: localConfiguration.value.teamsPerGroup,
       teamAssignments,
-      isConfigured: true
+      isConfigured: true,
+      groups: []
     };
 
     emit('save', configurationToSave);
@@ -421,17 +414,10 @@ const saveConfiguration = async () => {
 
 // Función para convertir teamAssignments a grupos de vista previa
 const loadExistingConfiguration = (config: any) => {
-  console.log('=== LOAD EXISTING CONFIGURATION ===');
-  console.log('Config received:', config);
-  console.log('isConfigurationLoaded before:', isConfigurationLoaded.value);
-
   // Evitar cargas múltiples
   if (isConfigurationLoaded.value) {
-    console.log('Configuration already loaded, skipping...');
     return;
   }
-
-  console.log('Loading configuration...', config.numberOfGroups, 'groups');
 
   // Actualizar configuración local
   localConfiguration.value = {
@@ -486,23 +472,10 @@ onMounted(async () => {
   loading.value = false;
 });
 
-// Watchers simplificados para evitar llamadas múltiples
-watch(previewGroups, (newGroups) => {
-}, { deep: true });
-
-watch(localConfiguration, (newConfig) => {
-}, { deep: true });
-
 // Watcher principal para manejar la configuración del torneo
 watch(() => props.tournamentData, (newTournament, oldTournament) => {
-  console.log('==== WATCHER TRIGGERED ====');
-  console.log('New tournament:', newTournament?.id, newTournament?.name);
-  console.log('Old tournament:', oldTournament?.id, oldTournament?.name);
-  console.log('isConfigurationLoaded before:', isConfigurationLoaded.value);
-
   // Resetear el estado cuando cambia el torneo
   if (newTournament?.id !== oldTournament?.id) {
-    console.log('RESETTING STATE - Different tournament ID');
     isConfigurationLoaded.value = false;
     loading.value = false;
 
@@ -518,11 +491,9 @@ watch(() => props.tournamentData, (newTournament, oldTournament) => {
 
   // Cargar configuración si existe
   if (newTournament?.configuration?.isConfigured && !isConfigurationLoaded.value) {
-    console.log('Loading existing configuration for tournament', newTournament.id);
     const tournament = newTournament as any;
 
     if (tournament.groups && tournament.teamAssignments) {
-      console.log('Tournament has groups and teamAssignments');
       const fullConfiguration = {
         ...tournament.configuration,
         groups: tournament.groups,
@@ -532,7 +503,6 @@ watch(() => props.tournamentData, (newTournament, oldTournament) => {
       loadExistingConfiguration(fullConfiguration);
     }
   } else if (newTournament && !newTournament.configuration?.isConfigured) {
-    console.log('Initializing new tournament configuration for', newTournament.id);
     // Si es un torneo nuevo sin configuración, inicializar valores por defecto
     localConfiguration.value = {
       numberOfGroups: 2,
@@ -543,8 +513,6 @@ watch(() => props.tournamentData, (newTournament, oldTournament) => {
     updateGroupConfiguration();
   }
 
-  console.log('isConfigurationLoaded after:', isConfigurationLoaded.value);
-  console.log('==== END WATCHER ====');
 }, { immediate: true, deep: true });
 </script>
 
