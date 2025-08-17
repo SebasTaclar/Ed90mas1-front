@@ -421,10 +421,17 @@ const saveConfiguration = async () => {
 
 // Función para convertir teamAssignments a grupos de vista previa
 const loadExistingConfiguration = (config: any) => {
+  console.log('=== LOAD EXISTING CONFIGURATION ===');
+  console.log('Config received:', config);
+  console.log('isConfigurationLoaded before:', isConfigurationLoaded.value);
+
   // Evitar cargas múltiples
   if (isConfigurationLoaded.value) {
+    console.log('Configuration already loaded, skipping...');
     return;
   }
+
+  console.log('Loading configuration...', config.numberOfGroups, 'groups');
 
   // Actualizar configuración local
   localConfiguration.value = {
@@ -488,8 +495,14 @@ watch(localConfiguration, (newConfig) => {
 
 // Watcher principal para manejar la configuración del torneo
 watch(() => props.tournamentData, (newTournament, oldTournament) => {
+  console.log('==== WATCHER TRIGGERED ====');
+  console.log('New tournament:', newTournament?.id, newTournament?.name);
+  console.log('Old tournament:', oldTournament?.id, oldTournament?.name);
+  console.log('isConfigurationLoaded before:', isConfigurationLoaded.value);
+
   // Resetear el estado cuando cambia el torneo
   if (newTournament?.id !== oldTournament?.id) {
+    console.log('RESETTING STATE - Different tournament ID');
     isConfigurationLoaded.value = false;
     loading.value = false;
 
@@ -505,9 +518,11 @@ watch(() => props.tournamentData, (newTournament, oldTournament) => {
 
   // Cargar configuración si existe
   if (newTournament?.configuration?.isConfigured && !isConfigurationLoaded.value) {
+    console.log('Loading existing configuration for tournament', newTournament.id);
     const tournament = newTournament as any;
 
     if (tournament.groups && tournament.teamAssignments) {
+      console.log('Tournament has groups and teamAssignments');
       const fullConfiguration = {
         ...tournament.configuration,
         groups: tournament.groups,
@@ -517,6 +532,7 @@ watch(() => props.tournamentData, (newTournament, oldTournament) => {
       loadExistingConfiguration(fullConfiguration);
     }
   } else if (newTournament && !newTournament.configuration?.isConfigured) {
+    console.log('Initializing new tournament configuration for', newTournament.id);
     // Si es un torneo nuevo sin configuración, inicializar valores por defecto
     localConfiguration.value = {
       numberOfGroups: 2,
@@ -526,6 +542,9 @@ watch(() => props.tournamentData, (newTournament, oldTournament) => {
     };
     updateGroupConfiguration();
   }
+
+  console.log('isConfigurationLoaded after:', isConfigurationLoaded.value);
+  console.log('==== END WATCHER ====');
 }, { immediate: true, deep: true });
 </script>
 

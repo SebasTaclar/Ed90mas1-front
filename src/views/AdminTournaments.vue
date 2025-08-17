@@ -7,8 +7,8 @@
         <p>Gestiona los torneos del sistema Ed90+1</p>
       </div>
 
-      <!-- Botón para crear nuevo torneo -->
-      <div class="create-tournament-section">
+      <!-- Lista de Torneos -->
+      <div class="tournaments-section">
         <div class="section-header">
           <h2>Gestionar Torneos</h2>
           <button @click="openCreateModal" class="btn-primary create-btn">
@@ -145,7 +145,7 @@
             <div class="no-tournaments-icon">🏆</div>
             <p>No hay torneos registrados {{ selectedStatusFilter
               || selectedCategoryFilter ? ' con los filtros aplicados' : ''
-              }}</p>
+            }}</p>
           </div>
         </div>
       </div>
@@ -156,7 +156,7 @@
       @close="closeUpsertModal" @save="handleTournamentSave" />
 
     <!-- Modal para configurar torneo -->
-    <TournamentConfigurationPopup v-if="showConfigModal" :key="selectedTournament?.id"
+    <TournamentConfigurationPopup v-if="showConfigModal" :key="`tournament-${selectedTournament?.id || 'new'}`"
       :tournament-data="selectedTournament" :registered-teams="getRegisteredTeamsByTournament(selectedTournament?.id)"
       @close="closeConfigModal" @save="handleConfigurationSave" />
 
@@ -385,21 +385,24 @@ const handleDelete = async () => {
 const getRegisteredTeamsByTournament = (tournamentId: number | undefined) => {
   if (!tournamentId || !teams.value) return [];
 
-  // TODO: Filtrar equipos reales por tornamentId cuando tengamos la relación
-  // Por ahora retornamos equipos de ejemplo para demostración
-  return teams.value.slice(0, 8).map((team, index) => ({
-    id: team.id || index + 1,
-    name: team.name || `Equipo ${index + 1}`,
-    // Otras propiedades del equipo...
-  }));
+  const registeredTeams = teams.value.filter(team => {
+    return team.teamTournaments?.some(relation => relation.tournamentId === tournamentId) ||
+      team.tournaments?.some(tournament => tournament.id === tournamentId);
+  });
+
+  return registeredTeams;
 }
 
 const getRegisteredTeamsCount = (tournamentId: number | undefined) => {
   if (!tournamentId || !teams.value) return 0;
 
-  // TODO: Filtrar equipos reales por tornamentId cuando tengamos la relación
-  // Por ahora retornamos un número de equipos de ejemplo para demostración
-  return Math.min(teams.value.length, 8); // Límite de 8 equipos por torneo
+  // Contar equipos reales registrados en este torneo específico
+  const count = teams.value.filter(team => {
+    return team.teamTournaments?.some(relation => relation.tournamentId === tournamentId) ||
+      team.tournaments?.some(tournament => tournament.id === tournamentId);
+  }).length;
+
+  return count;
 }
 
 const formatDate = (dateString: string): string => {
