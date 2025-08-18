@@ -125,6 +125,10 @@
                     <span v-else-if="tournament.configuration?.isConfigured">⚙️ Reconfigurar</span>
                     <span v-else>⚙️ Configurar</span>
                   </button>
+                  <button v-if="tournament.configuration?.isConfigured" @click="openFixturesModal(tournament)"
+                    class="btn-action fixtures" title="Programar partidos">
+                    📅 Cronograma
+                  </button>
                   <button @click="openEditModal(tournament)" class="btn-action edit" title="Editar torneo">
                     Editar
                   </button>
@@ -144,7 +148,7 @@
             <div class="no-tournaments-icon">🏆</div>
             <p>No hay torneos registrados {{ selectedStatusFilter
               || selectedCategoryFilter ? ' con los filtros aplicados' : ''
-            }}</p>
+              }}</p>
           </div>
         </div>
       </div>
@@ -158,6 +162,10 @@
     <TournamentConfigurationPopup v-if="showConfigModal" :key="`tournament-${selectedTournament?.id || 'new'}`"
       :tournament-data="selectedTournament" :registered-teams="getRegisteredTeamsByTournament(selectedTournament?.id)"
       @close="closeConfigModal" @save="handleConfigurationSave" />
+
+    <!-- Modal para cronograma de partidos -->
+    <TournamentFixturesPopup v-if="showFixturesModal" :key="`fixtures-${selectedTournament?.id || 'new'}`"
+      :tournament-data="selectedTournament" @close="closeFixturesModal" @save="handleFixturesSave" />
 
     <!-- Modal de confirmación para eliminar -->
     <ConfirmationModal v-if="showDeleteModal" :title="'Eliminar Torneo'"
@@ -179,6 +187,7 @@ import { useNotifications } from '@/utils/notifications'
 import Spinner from '@/components/Spinner.vue'
 import UpsertTournamentPopup from '@/components/UpsertTournamentPopup.vue'
 import TournamentConfigurationPopup from '@/components/TournamentConfigurationPopup.vue'
+import TournamentFixturesPopup from '@/components/TournamentFixturesPopup.vue'
 import ConfirmationModal from '@/components/ConfirmationModal.vue'
 
 defineOptions({
@@ -205,6 +214,9 @@ const modalMode = ref<'create' | 'edit'>('create')
 
 // Modal de configuración
 const showConfigModal = ref(false)
+
+// Modal de cronograma
+const showFixturesModal = ref(false)
 
 // Modal de eliminación
 const showDeleteModal = ref(false)
@@ -284,6 +296,53 @@ const openConfigModal = async (tournament: Tournament) => {
 const closeConfigModal = () => {
   showConfigModal.value = false
   selectedTournament.value = null
+}
+
+// Funciones para cronograma de torneo
+const openFixturesModal = async (tournament: Tournament) => {
+  // Limpiar selección anterior
+  selectedTournament.value = null
+
+  // Pequeña pausa para asegurar que el estado se limpia
+  await new Promise(resolve => setTimeout(resolve, 10))
+
+  // Asignar el nuevo torneo
+  selectedTournament.value = { ...tournament }
+
+  showFixturesModal.value = true
+}
+
+const closeFixturesModal = () => {
+  showFixturesModal.value = false
+  selectedTournament.value = null
+}
+
+const handleFixturesSave = async (fixturesData: any) => {
+  if (selectedTournament.value && selectedTournament.value.id) {
+    try {
+      loading.value = true
+
+      success(
+        'Cronograma guardado',
+        `Se guardó exitosamente el cronograma del torneo "${selectedTournament.value.name}".`
+      )
+
+      // Recargar la lista para reflejar los cambios
+      await loadData()
+
+    } catch (err) {
+      console.error('Error saving fixtures:', err)
+      const errorMessage = err instanceof Error ? err.message : 'Error desconocido'
+
+      error(
+        'Error al guardar',
+        `No se pudo guardar el cronograma del torneo: ${errorMessage}`
+      )
+    } finally {
+      loading.value = false
+    }
+  }
+  closeFixturesModal()
 }
 
 const handleConfigurationSave = async (configuration: TournamentConfiguration) => {
@@ -776,6 +835,17 @@ onMounted(async () => {
   background: #d1ecf1;
   color: #0c5460;
   border: 1px solid #bee5eb;
+}
+
+.btn-action.fixtures {
+  background: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeaa7;
+}
+
+.btn-action.fixtures:hover {
+  background: #ffeaa7;
+  color: #856404;
 }
 
 .btn-action.config.loading {

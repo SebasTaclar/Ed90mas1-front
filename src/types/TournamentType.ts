@@ -63,6 +63,9 @@ export interface Tournament {
   updatedAt: string
   tournamentCategories: TournamentCategory[]
   configuration?: TournamentConfiguration
+  // Propiedades adicionales para el sistema de grupos
+  teamAssignments?: TeamAssignment[]
+  groups?: TournamentGroup[]
 }
 
 export interface CreateTournamentRequest {
