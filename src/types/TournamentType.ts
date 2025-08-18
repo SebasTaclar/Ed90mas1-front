@@ -91,4 +91,4 @@ export interface CreateTournamentResponse {
   tournamentCategories: TournamentCategory[]
 }
 
-export interface GetTournamentsResponse extends Array<Tournament> {}
+export type GetTournamentsResponse = Array<Tournament>

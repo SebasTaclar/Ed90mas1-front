@@ -102,7 +102,9 @@ export const matchesService = {
   // Obtener partidos de un torneo
   async getTournamentMatches(tournamentId: number): Promise<Match[]> {
     try {
-      const response = await fetch(`${API_BASE}/matches?tournamentId=${tournamentId}`, {
+      const url = `${API_BASE}/matches?tournamentId=${tournamentId}`
+
+      const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -120,10 +122,11 @@ export const matchesService = {
       }
 
       const data = await response.json()
-      console.log('📥 Respuesta del backend getTournamentMatches:', data)
 
       // El backend puede devolver { success, message, data, timestamp, statusCode } o directamente un array
-      return data.data || data || []
+      const matches = data.data || data || []
+
+      return matches
     } catch (error) {
       if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
         // Error de red, devolver array vacío
@@ -132,9 +135,7 @@ export const matchesService = {
       console.error('Error fetching matches:', error)
       throw error
     }
-  },
-
-  // Actualizar un partido
+  }, // Actualizar un partido
   async updateMatch(matchId: number, updates: Partial<Match>): Promise<Match> {
     try {
       const response = await fetch(`${API_BASE}/matches/${matchId}`, {

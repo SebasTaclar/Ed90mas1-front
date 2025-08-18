@@ -129,6 +129,10 @@
                     class="btn-action fixtures" title="Programar partidos">
                     📅 Cronograma
                   </button>
+                  <button @click="goToTournamentDetail(tournament)" class="btn-action details"
+                    title="Ver detalles del torneo">
+                    🏆 Ir a Detalles
+                  </button>
                   <button @click="openEditModal(tournament)" class="btn-action edit" title="Editar torneo">
                     Editar
                   </button>
@@ -178,6 +182,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import type { Tournament, TournamentConfiguration } from '@/types/TournamentType'
 import { useTournaments } from '@/composables/useTournaments'
 import { useCategories } from '@/composables/useCategories'
@@ -195,6 +200,7 @@ defineOptions({
 })
 
 // Estado de la aplicación
+const router = useRouter()
 const { tournaments, loadTournaments, deleteTournament, deleteTournamentBanner } = useTournaments()
 const { categories, loadCategories } = useCategories()
 const { teams, loadTeams } = useTeams()
@@ -459,6 +465,10 @@ const getRegisteredTeamsCount = (tournamentId: number | undefined) => {
   }).length;
 
   return count;
+}
+
+const goToTournamentDetail = (tournament: Tournament) => {
+  router.push(`/tournament/${tournament.id}`)
 }
 
 const formatDate = (dateString: string): string => {
@@ -846,6 +856,17 @@ onMounted(async () => {
 .btn-action.fixtures:hover {
   background: #ffeaa7;
   color: #856404;
+}
+
+.btn-action.details {
+  background: #d1ecf1;
+  color: #0c5460;
+  border: 1px solid #bee5eb;
+}
+
+.btn-action.details:hover {
+  background: #b8daff;
+  color: #004085;
 }
 
 .btn-action.config.loading {

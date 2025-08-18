@@ -3,20 +3,14 @@
     <!-- Header principal con imagen mejorada -->
     <header class="tournament-hero">
       <div class="hero-background">
-        <img
-          :src="selectedTournament?.bannerPath ?? '/images/torneo_encurso_M.jpg'"
-          :alt="selectedTournament?.name"
-          @error="handleImageError"
-        >
+        <img :src="selectedTournament?.bannerPath ?? '/images/torneo_encurso_M.jpg'" :alt="selectedTournament?.name"
+          @error="handleImageError">
         <div class="hero-overlay"></div>
       </div>
       <div class="hero-content">
         <div class="tournament-logo-hero">
-          <img
-            :src="selectedTournament?.bannerPath ?? '/images/torneo_encurso_M.jpg'"
-            :alt="selectedTournament?.name"
-            @error="handleImageError"
-          >
+          <img :src="selectedTournament?.bannerPath ?? '/images/torneo_encurso_M.jpg'" :alt="selectedTournament?.name"
+            @error="handleImageError">
           <div class="logo-badge">
             <span>2ª ED.</span>
           </div>
@@ -47,10 +41,7 @@
               <span>{{ getTournamentProgress(selectedTournament) }}%</span>
             </div>
             <div class="progress-bar-hero">
-              <div
-                class="progress-fill"
-                :style="{ width: getTournamentProgress(selectedTournament) + '%' }"
-              ></div>
+              <div class="progress-fill" :style="{ width: getTournamentProgress(selectedTournament) + '%' }"></div>
             </div>
           </div>
         </div>
@@ -61,12 +52,8 @@
     <nav class="tournament-navigation">
       <div class="nav-cards-container">
         <div class="nav-cards-scroll">
-          <div
-            v-for="section in navigationSections"
-            :key="section.id"
-            :class="['nav-card', { active: activeSection === section.id }]"
-            @click="setActiveSection(section.id)"
-          >
+          <div v-for="section in navigationSections" :key="section.id"
+            :class="['nav-card', { active: activeSection === section.id }]" @click="setActiveSection(section.id)">
             <div class="nav-card-glow"></div>
             <div class="nav-card-icon">
               <span>{{ section.icon }}</span>
@@ -81,18 +68,10 @@
 
         <!-- Controles de navegación -->
         <div class="nav-scroll-controls">
-          <button
-            class="nav-scroll-btn nav-scroll-left"
-            @click="scrollNavLeft"
-            :disabled="isNavScrollAtStart"
-          >
+          <button class="nav-scroll-btn nav-scroll-left" @click="scrollNavLeft" :disabled="isNavScrollAtStart">
             <span>←</span>
           </button>
-          <button
-            class="nav-scroll-btn nav-scroll-right"
-            @click="scrollNavRight"
-            :disabled="isNavScrollAtEnd"
-          >
+          <button class="nav-scroll-btn nav-scroll-right" @click="scrollNavRight" :disabled="isNavScrollAtEnd">
             <span>→</span>
           </button>
         </div>
@@ -125,7 +104,8 @@
                         <span class="detail-icon">📅</span>
                         <div class="detail-content">
                           <span class="detail-label">Duración</span>
-                          <span class="detail-value">{{ formatDateRange(selectedTournament?.startDate, selectedTournament?.endDate) }}</span>
+                          <span class="detail-value">{{ formatDateRange(selectedTournament?.startDate,
+                            selectedTournament?.endDate) }}</span>
                         </div>
                       </div>
                       <div class="detail-item">
@@ -180,17 +160,9 @@
                 </div>
 
                 <div v-else class="teams-grid-centered">
-                  <div
-                    v-for="team in tournamentTeams"
-                    :key="team.id"
-                    class="team-card-modern"
-                  >
+                  <div v-for="team in tournamentTeams" :key="team.id" class="team-card-modern">
                     <div class="team-logo-modern">
-                      <img
-                        :src="team.logoPath ?? '/images/logo.png'"
-                        :alt="team.name"
-                        @error="handleTeamImageError"
-                      >
+                      <img :src="team.logoPath ?? '/images/logo.png'" :alt="team.name" @error="handleTeamImageError">
                     </div>
                     <h3 class="team-name-modern">{{ team.name }}</h3>
                     <div class="team-stats">
@@ -209,249 +181,263 @@
             </div>
           </div>
 
-        <!-- Sección: Cronograma -->
-        <div v-else-if="activeSection === 'cronograma'" class="section-content">
-          <div class="section-header">
-            <h2>📅 Cronograma</h2>
-            <p class="section-description">Calendario completo de partidos y fechas importantes</p>
-          </div>
-
-          <div class="schedule-container">
-            <!-- Filtros de cronograma -->
-            <div class="schedule-filters">
-              <button class="filter-btn active">Todos</button>
-              <button class="filter-btn">Esta semana</button>
-              <button class="filter-btn">Próximos</button>
-              <button class="filter-btn">Finalizados</button>
+          <!-- Sección: Cronograma -->
+          <div v-else-if="activeSection === 'cronograma'" class="section-content">
+            <div class="section-header">
+              <h2>📅 Cronograma</h2>
+              <p class="section-description">Calendario completo de partidos programados</p>
             </div>
 
-            <!-- Timeline de partidos -->
-            <div class="schedule-timeline">
-              <div class="match-day">
-                <div class="day-header">
-                  <h3>Jornada 1</h3>
-                  <span class="day-date">15 de Agosto, 2025</span>
+            <div class="schedule-container">
+              <!-- Estado de carga -->
+              <div v-if="matchesLoading" class="loading-state-centered">
+                <div class="spinner"></div>
+                <p>Cargando cronograma...</p>
+              </div>
+
+              <!-- Sin partidos programados -->
+              <div v-else-if="tournamentMatches.length === 0" class="empty-state-centered">
+                <span>📅</span>
+                <h3>Sin partidos programados</h3>
+                <p>Este torneo aún no tiene partidos en el cronograma.</p>
+              </div>
+
+              <!-- Cronograma con partidos reales -->
+              <div v-else class="schedule-timeline">
+                <div class="schedule-stats">
+                  <div class="stat-mini">
+                    <span class="stat-label">Total partidos</span>
+                    <span class="stat-value">{{ tournamentMatches.length }}</span>
+                  </div>
+                  <div class="stat-mini">
+                    <span class="stat-label">Por jugar</span>
+                    <span class="stat-value">{{ getMatchesByStatus('scheduled').length }}</span>
+                  </div>
+                  <div class="stat-mini">
+                    <span class="stat-label">Completados</span>
+                    <span class="stat-value">{{ getMatchesByStatus('completed').length }}</span>
+                  </div>
                 </div>
-                <div class="matches-list">
-                  <div class="match-card">
-                    <div class="match-time">14:00</div>
-                    <div class="match-teams">
-                      <div class="team">
+
+                <!-- Lista de partidos agrupados por fecha -->
+                <div v-for="(dayMatches, date) in matchesByDate" :key="date" class="match-day">
+                  <div class="day-header">
+                    <h3>{{ formatMatchDate(date.toString()) }}</h3>
+                    <span class="day-date">{{ dayMatches.length }} partido{{ dayMatches.length !== 1 ? 's' : ''
+                      }}</span>
+                  </div>
+                  <div class="matches-list">
+                    <div v-for="match in dayMatches" :key="match.id" class="match-card">
+                      <div class="match-time">
+                        {{ formatMatchTime(match.matchDate || match.scheduledDate) }}
+                      </div>
+                      <div class="match-teams">
+                        <div class="team">
+                          <img :src="match.homeTeam?.logoPath || '/images/logo.png'" :alt="match.homeTeam?.name"
+                            @error="handleTeamImageError">
+                          <span>{{ match.homeTeam?.name || 'Equipo Local' }}</span>
+                        </div>
+                        <div class="vs">
+                          {{ getMatchScore(match) }}
+                        </div>
+                        <div class="team">
+                          <img :src="match.awayTeam?.logoPath || '/images/logo.png'" :alt="match.awayTeam?.name"
+                            @error="handleTeamImageError">
+                          <span>{{ match.awayTeam?.name || 'Equipo Visitante' }}</span>
+                        </div>
+                      </div>
+                      <div class="match-status" :class="getMatchStatusClass(match.status)">
+                        {{ getMatchStatusText(match.status) }}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sección: Resultados -->
+          <div v-else-if="activeSection === 'resultados'" class="section-content">
+            <div class="section-header">
+              <h2>⚽ Resultados</h2>
+              <p class="section-description">Resultados de todos los partidos disputados</p>
+            </div>
+
+            <div class="results-container">
+              <!-- Estadísticas generales -->
+              <div class="stats-grid">
+                <div class="stat-card">
+                  <div class="stat-icon">⚽</div>
+                  <div class="stat-content">
+                    <span class="stat-number">24</span>
+                    <span class="stat-label">Goles totales</span>
+                  </div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-icon">🥅</div>
+                  <div class="stat-content">
+                    <span class="stat-number">8</span>
+                    <span class="stat-label">Partidos jugados</span>
+                  </div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-icon">👤</div>
+                  <div class="stat-content">
+                    <span class="stat-number">12</span>
+                    <span class="stat-label">Goleadores</span>
+                  </div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-icon">🟨</div>
+                  <div class="stat-content">
+                    <span class="stat-number">5</span>
+                    <span class="stat-label">Tarjetas amarillas</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Resultados recientes -->
+              <div class="recent-results">
+                <h3>Resultados recientes</h3>
+                <div class="results-list">
+                  <div class="result-card">
+                    <div class="match-info">
+                      <span class="match-date">10 Ago</span>
+                      <span class="match-round">Jornada 1</span>
+                    </div>
+                    <div class="match-result">
+                      <div class="team-result">
                         <img src="/images/logo.png" alt="Drink Team" @error="handleTeamImageError">
-                        <span>Drink Team</span>
+                        <span class="team-name">Drink Team</span>
+                        <span class="team-score winner">3</span>
                       </div>
-                      <div class="vs">VS</div>
-                      <div class="team">
+                      <div class="result-separator">-</div>
+                      <div class="team-result">
+                        <span class="team-score">1</span>
+                        <span class="team-name">Tecno Stop</span>
                         <img src="/images/logo.png" alt="Tecno Stop" @error="handleTeamImageError">
-                        <span>Tecno Stop</span>
                       </div>
                     </div>
-                    <div class="match-status pending">Por jugar</div>
-                  </div>
-
-                  <div class="match-card">
-                    <div class="match-time">16:00</div>
-                    <div class="match-teams">
-                      <div class="team">
-                        <img src="/images/logo.png" alt="Olympia FC" @error="handleTeamImageError">
-                        <span>Olympia FC</span>
-                      </div>
-                      <div class="vs">VS</div>
-                      <div class="team">
-                        <img src="/images/logo.png" alt="La Fábrica" @error="handleTeamImageError">
-                        <span>La Fábrica</span>
-                      </div>
+                    <div class="match-actions">
+                      <button class="action-btn">Ver detalles</button>
                     </div>
-                    <div class="match-status pending">Por jugar</div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <!-- Sección: Resultados -->
-        <div v-else-if="activeSection === 'resultados'" class="section-content">
-          <div class="section-header">
-            <h2>⚽ Resultados</h2>
-            <p class="section-description">Resultados de todos los partidos disputados</p>
-          </div>
-
-          <div class="results-container">
-            <!-- Estadísticas generales -->
-            <div class="stats-grid">
-              <div class="stat-card">
-                <div class="stat-icon">⚽</div>
-                <div class="stat-content">
-                  <span class="stat-number">24</span>
-                  <span class="stat-label">Goles totales</span>
-                </div>
-              </div>
-              <div class="stat-card">
-                <div class="stat-icon">🥅</div>
-                <div class="stat-content">
-                  <span class="stat-number">8</span>
-                  <span class="stat-label">Partidos jugados</span>
-                </div>
-              </div>
-              <div class="stat-card">
-                <div class="stat-icon">👤</div>
-                <div class="stat-content">
-                  <span class="stat-number">12</span>
-                  <span class="stat-label">Goleadores</span>
-                </div>
-              </div>
-              <div class="stat-card">
-                <div class="stat-icon">🟨</div>
-                <div class="stat-content">
-                  <span class="stat-number">5</span>
-                  <span class="stat-label">Tarjetas amarillas</span>
-                </div>
-              </div>
+          <!-- Sección: Clasificación -->
+          <div v-else-if="activeSection === 'clasificacion'" class="section-content">
+            <div class="section-header">
+              <h2>🏆 Tabla de Clasificación</h2>
+              <p class="section-description">Posiciones actuales de todos los equipos</p>
             </div>
 
-            <!-- Resultados recientes -->
-            <div class="recent-results">
-              <h3>Resultados recientes</h3>
-              <div class="results-list">
-                <div class="result-card">
-                  <div class="match-info">
-                    <span class="match-date">10 Ago</span>
-                    <span class="match-round">Jornada 1</span>
-                  </div>
-                  <div class="match-result">
-                    <div class="team-result">
+            <div class="classification-container">
+              <!-- Leyenda -->
+              <div class="classification-legend">
+                <div class="legend-item qualify">
+                  <span class="legend-color"></span>
+                  <span>Clasifican a playoff</span>
+                </div>
+                <div class="legend-item elimination">
+                  <span class="legend-color"></span>
+                  <span>Zona de eliminación</span>
+                </div>
+              </div>
+
+              <!-- Tabla de posiciones -->
+              <div class="classification-table">
+                <div class="table-header">
+                  <div class="pos">#</div>
+                  <div class="team">Equipo</div>
+                  <div class="games">PJ</div>
+                  <div class="wins">PG</div>
+                  <div class="draws">PE</div>
+                  <div class="losses">PP</div>
+                  <div class="goals-for">GF</div>
+                  <div class="goals-against">GC</div>
+                  <div class="goal-diff">DG</div>
+                  <div class="points">PTS</div>
+                </div>
+
+                <div class="table-body">
+                  <div class="table-row qualify">
+                    <div class="pos">1</div>
+                    <div class="team">
                       <img src="/images/logo.png" alt="Drink Team" @error="handleTeamImageError">
-                      <span class="team-name">Drink Team</span>
-                      <span class="team-score winner">3</span>
+                      <span>Drink Team</span>
                     </div>
-                    <div class="result-separator">-</div>
-                    <div class="team-result">
-                      <span class="team-score">1</span>
-                      <span class="team-name">Tecno Stop</span>
-                      <img src="/images/logo.png" alt="Tecno Stop" @error="handleTeamImageError">
+                    <div class="games">3</div>
+                    <div class="wins">3</div>
+                    <div class="draws">0</div>
+                    <div class="losses">0</div>
+                    <div class="goals-for">8</div>
+                    <div class="goals-against">2</div>
+                    <div class="goal-diff">+6</div>
+                    <div class="points">9</div>
+                  </div>
+
+                  <div class="table-row qualify">
+                    <div class="pos">2</div>
+                    <div class="team">
+                      <img src="/images/logo.png" alt="Olympia FC" @error="handleTeamImageError">
+                      <span>Olympia FC</span>
                     </div>
+                    <div class="games">3</div>
+                    <div class="wins">2</div>
+                    <div class="draws">1</div>
+                    <div class="losses">0</div>
+                    <div class="goals-for">6</div>
+                    <div class="goals-against">3</div>
+                    <div class="goal-diff">+3</div>
+                    <div class="points">7</div>
                   </div>
-                  <div class="match-actions">
-                    <button class="action-btn">Ver detalles</button>
+
+                  <div class="table-row">
+                    <div class="pos">3</div>
+                    <div class="team">
+                      <img src="/images/logo.png" alt="La Fábrica" @error="handleTeamImageError">
+                      <span>La Fábrica</span>
+                    </div>
+                    <div class="games">3</div>
+                    <div class="wins">2</div>
+                    <div class="draws">0</div>
+                    <div class="losses">1</div>
+                    <div class="goals-for">5</div>
+                    <div class="goals-against">4</div>
+                    <div class="goal-diff">+1</div>
+                    <div class="points">6</div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <!-- Sección: Clasificación -->
-        <div v-else-if="activeSection === 'clasificacion'" class="section-content">
-          <div class="section-header">
-            <h2>🏆 Tabla de Clasificación</h2>
-            <p class="section-description">Posiciones actuales de todos los equipos</p>
-          </div>
-
-          <div class="classification-container">
-            <!-- Leyenda -->
-            <div class="classification-legend">
-              <div class="legend-item qualify">
-                <span class="legend-color"></span>
-                <span>Clasifican a playoff</span>
-              </div>
-              <div class="legend-item elimination">
-                <span class="legend-color"></span>
-                <span>Zona de eliminación</span>
-              </div>
+          <!-- Sección: Rankings y encuestas -->
+          <div v-else-if="activeSection === 'rankings'" class="section-content">
+            <div class="section-header">
+              <h2>Rankings y encuestas</h2>
             </div>
-
-            <!-- Tabla de posiciones -->
-            <div class="classification-table">
-              <div class="table-header">
-                <div class="pos">#</div>
-                <div class="team">Equipo</div>
-                <div class="games">PJ</div>
-                <div class="wins">PG</div>
-                <div class="draws">PE</div>
-                <div class="losses">PP</div>
-                <div class="goals-for">GF</div>
-                <div class="goals-against">GC</div>
-                <div class="goal-diff">DG</div>
-                <div class="points">PTS</div>
-              </div>
-
-              <div class="table-body">
-                <div class="table-row qualify">
-                  <div class="pos">1</div>
-                  <div class="team">
-                    <img src="/images/logo.png" alt="Drink Team" @error="handleTeamImageError">
-                    <span>Drink Team</span>
-                  </div>
-                  <div class="games">3</div>
-                  <div class="wins">3</div>
-                  <div class="draws">0</div>
-                  <div class="losses">0</div>
-                  <div class="goals-for">8</div>
-                  <div class="goals-against">2</div>
-                  <div class="goal-diff">+6</div>
-                  <div class="points">9</div>
-                </div>
-
-                <div class="table-row qualify">
-                  <div class="pos">2</div>
-                  <div class="team">
-                    <img src="/images/logo.png" alt="Olympia FC" @error="handleTeamImageError">
-                    <span>Olympia FC</span>
-                  </div>
-                  <div class="games">3</div>
-                  <div class="wins">2</div>
-                  <div class="draws">1</div>
-                  <div class="losses">0</div>
-                  <div class="goals-for">6</div>
-                  <div class="goals-against">3</div>
-                  <div class="goal-diff">+3</div>
-                  <div class="points">7</div>
-                </div>
-
-                <div class="table-row">
-                  <div class="pos">3</div>
-                  <div class="team">
-                    <img src="/images/logo.png" alt="La Fábrica" @error="handleTeamImageError">
-                    <span>La Fábrica</span>
-                  </div>
-                  <div class="games">3</div>
-                  <div class="wins">2</div>
-                  <div class="draws">0</div>
-                  <div class="losses">1</div>
-                  <div class="goals-for">5</div>
-                  <div class="goals-against">4</div>
-                  <div class="goal-diff">+1</div>
-                  <div class="points">6</div>
-                </div>
-              </div>
+            <div class="coming-soon">
+              <span>📊</span>
+              <h3>Próximamente</h3>
+              <p>Los rankings y encuestas estarán disponibles durante el torneo</p>
             </div>
           </div>
-        </div>
 
-        <!-- Sección: Rankings y encuestas -->
-        <div v-else-if="activeSection === 'rankings'" class="section-content">
-          <div class="section-header">
-            <h2>Rankings y encuestas</h2>
+          <!-- Sección: Fotos, videos y noticias -->
+          <div v-else-if="activeSection === 'fotos'" class="section-content">
+            <div class="section-header">
+              <h2>Fotos, videos y noticias</h2>
+            </div>
+            <div class="coming-soon">
+              <span>📸</span>
+              <h3>Próximamente</h3>
+              <p>Las fotos, videos y noticias del torneo se publicarán aquí</p>
+            </div>
           </div>
-          <div class="coming-soon">
-            <span>📊</span>
-            <h3>Próximamente</h3>
-            <p>Los rankings y encuestas estarán disponibles durante el torneo</p>
-          </div>
-        </div>
-
-        <!-- Sección: Fotos, videos y noticias -->
-        <div v-else-if="activeSection === 'fotos'" class="section-content">
-          <div class="section-header">
-            <h2>Fotos, videos y noticias</h2>
-          </div>
-          <div class="coming-soon">
-            <span>📸</span>
-            <h3>Próximamente</h3>
-            <p>Las fotos, videos y noticias del torneo se publicarán aquí</p>
-          </div>
-        </div>
         </div>
       </section>
     </main>
@@ -459,22 +445,27 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useTournaments } from '@/composables/useTournaments'
 import { useTeams } from '@/composables/useTeams'
+import { useFixtures } from '@/composables/useFixtures'
 import type { Tournament } from '@/types/TournamentType'
 import type { Team } from '@/types/TeamType'
+import type { Match } from '@/services/matchesService'
 
 const route = useRoute()
 const router = useRouter()
 const { tournaments, loading, error, loadTournaments } = useTournaments()
 const { teams, loadTeams } = useTeams()
+const { loadTournamentMatches } = useFixtures()
 
 // Estado reactivo
 const activeSection = ref('inicio')
 const tournamentTeams = ref<Team[]>([])
 const selectedTournament = ref<Tournament | null>(null)
+const tournamentMatches = ref<Match[]>([]) // Matches reales del torneo
+const matchesLoading = ref(false) // Estado de carga de matches
 const isNavScrollAtStart = ref(true)
 const isNavScrollAtEnd = ref(false)
 
@@ -641,6 +632,8 @@ const loadTournamentData = async () => {
     selectedTournament.value = tournament
     // Cargar equipos reales del torneo
     await loadTournamentTeams()
+    // Cargar matches del torneo
+    await loadTournamentMatchesData()
   } else {
     // Si no se encuentra el torneo, redirigir al home
     router.push('/')
@@ -672,6 +665,32 @@ const loadTournamentTeams = async () => {
     console.error('Error al cargar equipos del torneo:', err)
     // En caso de error, usar equipos de ejemplo
     loadMockTeams()
+  }
+}
+
+// Cargar matches del torneo específico
+const loadTournamentMatchesData = async () => {
+  if (!selectedTournament.value) {
+    return
+  }
+
+  matchesLoading.value = true
+
+  try {
+    const matches = await loadTournamentMatches(selectedTournament.value.id)
+
+    if (matches && matches.length > 0) {
+      tournamentMatches.value = matches
+      console.log(`Matches cargados para el torneo ${selectedTournament.value.name}:`, matches.length)
+    } else {
+      tournamentMatches.value = []
+      console.log('No hay matches para este torneo')
+    }
+  } catch (err) {
+    console.error('Error al cargar matches del torneo:', err)
+    tournamentMatches.value = []
+  } finally {
+    matchesLoading.value = false
   }
 }
 
@@ -718,10 +737,100 @@ const loadMockTeams = () => {
   ]
 }
 
+// Funciones para manejar matches
+const matchesByDate = computed(() => {
+  const grouped: { [key: string]: Match[] } = {}
+
+  tournamentMatches.value.forEach(match => {
+    const date = match.matchDate || match.scheduledDate
+    if (date) {
+      const dateKey = date.split('T')[0] // Obtener solo la fecha (YYYY-MM-DD)
+      if (!grouped[dateKey]) {
+        grouped[dateKey] = []
+      }
+      grouped[dateKey].push(match)
+    }
+  })
+
+  // Ordenar fechas cronológicamente
+  const sortedDates = Object.keys(grouped).sort()
+  const sortedGrouped: { [key: string]: Match[] } = {}
+
+  sortedDates.forEach(date => {
+    // Ordenar matches por hora dentro de cada fecha
+    sortedGrouped[date] = grouped[date].sort((a, b) => {
+      const timeA = a.matchDate || a.scheduledDate || ''
+      const timeB = b.matchDate || b.scheduledDate || ''
+      return timeA.localeCompare(timeB)
+    })
+  })
+
+  return sortedGrouped
+})
+
+const getMatchesByStatus = (status: string) => {
+  return tournamentMatches.value.filter(match => match.status === status)
+}
+
+const formatMatchDate = (dateString: string) => {
+  const date = new Date(dateString)
+  return date.toLocaleDateString('es-ES', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long'
+  })
+}
+
+const formatMatchTime = (dateString?: string) => {
+  if (!dateString) return '--:--'
+  const date = new Date(dateString)
+  return date.toLocaleTimeString('es-ES', {
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
+const getMatchScore = (match: Match) => {
+  if (match.status === 'completed' && match.homeScore !== null && match.awayScore !== null) {
+    return `${match.homeScore} - ${match.awayScore}`
+  }
+  return 'VS'
+}
+
+const getMatchStatusClass = (status?: string) => {
+  switch (status) {
+    case 'scheduled':
+      return 'pending'
+    case 'in_progress':
+      return 'live'
+    case 'completed':
+      return 'finished'
+    case 'cancelled':
+      return 'cancelled'
+    default:
+      return 'pending'
+  }
+}
+
+const getMatchStatusText = (status?: string) => {
+  switch (status) {
+    case 'scheduled':
+      return 'Por jugar'
+    case 'in_progress':
+      return 'En juego'
+    case 'completed':
+      return 'Finalizado'
+    case 'cancelled':
+      return 'Cancelado'
+    default:
+      return 'Por jugar'
+  }
+}
+
 // Montar componente
 onMounted(async () => {
   // Scroll to top para navegación móvil
-  window.scrollTo({top: 0, behavior: 'smooth'})
+  window.scrollTo({ top: 0, behavior: 'smooth' })
 
   await loadTournaments()
   await loadTournamentData()
@@ -737,7 +846,8 @@ onMounted(async () => {
   background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
   color: #212529;
   transition: all 0.3s ease;
-  padding-top: 60px; /* Compensar header fijo en desktop */
+  padding-top: 60px;
+  /* Compensar header fijo en desktop */
 }
 
 /* MODO OSCURO - Compatible con ThemeToggle */
@@ -1233,12 +1343,10 @@ onMounted(async () => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(
-    135deg,
-    rgba(0, 17, 34, 0.8) 0%,
-    rgba(0, 34, 68, 0.6) 50%,
-    rgba(0, 17, 34, 0.8) 100%
-  );
+  background: linear-gradient(135deg,
+      rgba(0, 17, 34, 0.8) 0%,
+      rgba(0, 34, 68, 0.6) 50%,
+      rgba(0, 17, 34, 0.8) 100%);
 }
 
 .hero-content {
@@ -1702,7 +1810,8 @@ onMounted(async () => {
   margin-right: auto;
 }
 
-.about-card-main, .contact-card-below {
+.about-card-main,
+.contact-card-below {
   background: white;
   border-radius: 20px;
   padding: 2rem;
@@ -1711,12 +1820,14 @@ onMounted(async () => {
   transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
-.about-card:hover, .contact-card:hover {
+.about-card:hover,
+.contact-card:hover {
   transform: translateY(-5px);
   box-shadow: 0 15px 40px rgba(0, 123, 255, 0.15);
 }
 
-.about-header, .contact-header {
+.about-header,
+.contact-header {
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -1725,7 +1836,8 @@ onMounted(async () => {
   border-bottom: 2px solid #f8f9fa;
 }
 
-.about-icon, .contact-icon {
+.about-icon,
+.contact-icon {
   font-size: 1.5rem;
   width: 40px;
   height: 40px;
@@ -1737,7 +1849,8 @@ onMounted(async () => {
   color: white;
 }
 
-.about-header h3, .contact-header h3 {
+.about-header h3,
+.contact-header h3 {
   font-size: 1.3rem;
   font-weight: 600;
   color: #212529;
@@ -1854,7 +1967,8 @@ onMounted(async () => {
   width: 100%;
 }
 
-.loading-state-centered, .error-state-centered {
+.loading-state-centered,
+.error-state-centered {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1863,6 +1977,36 @@ onMounted(async () => {
   background: white;
   border-radius: 20px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+.empty-state-centered {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  color: #6c757d;
+}
+
+.empty-state-centered span {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.empty-state-centered h3 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #495057;
+  margin-bottom: 0.5rem;
+}
+
+.empty-state-centered p {
+  color: #6c757d;
+  font-size: 1rem;
+  margin: 0;
 }
 
 .teams-grid-centered {
@@ -2028,6 +2172,45 @@ onMounted(async () => {
   padding: 2rem;
 }
 
+.schedule-stats {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+}
+
+.schedule-stats .stat-mini {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  background: #f8f9fa;
+  border-radius: 12px;
+  min-width: 120px;
+  border: 2px solid transparent;
+  transition: all 0.3s ease;
+}
+
+.schedule-stats .stat-mini:hover {
+  border-color: #007bff;
+  transform: translateY(-2px);
+}
+
+.schedule-stats .stat-label {
+  font-size: 0.85rem;
+  color: #6c757d;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  text-align: center;
+}
+
+.schedule-stats .stat-value {
+  font-size: 1.5rem;
+  color: #007bff;
+  font-weight: 700;
+}
+
 .match-day {
   margin-bottom: 2rem;
 }
@@ -2137,6 +2320,11 @@ onMounted(async () => {
 
 .match-status.finished {
   background: #28a745;
+  color: white;
+}
+
+.match-status.cancelled {
+  background: #6c757d;
   color: white;
 }
 
@@ -2424,7 +2612,14 @@ onMounted(async () => {
   object-fit: cover;
 }
 
-.games, .wins, .draws, .losses, .goals-for, .goals-against, .goal-diff, .points {
+.games,
+.wins,
+.draws,
+.losses,
+.goals-for,
+.goals-against,
+.goal-diff,
+.points {
   text-align: center;
   font-weight: 600;
 }
@@ -2510,7 +2705,8 @@ onMounted(async () => {
 }
 
 /* Estados de carga y error */
-.loading-state, .error-state {
+.loading-state,
+.error-state {
   text-align: center;
   padding: 4rem 2rem;
   color: #6c757d;
@@ -2527,8 +2723,13 @@ onMounted(async () => {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .error-state span {
@@ -2594,7 +2795,8 @@ onMounted(async () => {
 
 @media (max-width: 768px) {
   .tournament-detail {
-    padding-top: 70px; /* Compensar header fijo en móvil */
+    padding-top: 70px;
+    /* Compensar header fijo en móvil */
   }
 
   .tournament-hero {
@@ -2634,7 +2836,8 @@ onMounted(async () => {
     font-size: 1.8rem;
   }
 
-  .about-card-main, .contact-card-below {
+  .about-card-main,
+  .contact-card-below {
     padding: 1.5rem;
   }
 
@@ -2825,12 +3028,24 @@ onMounted(async () => {
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.8; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.8;
+  }
 }
 
 @keyframes shimmer {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(100%);
+  }
 }
 </style>
