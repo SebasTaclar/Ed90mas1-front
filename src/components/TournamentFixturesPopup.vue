@@ -90,6 +90,18 @@
       <p>Haz clic en <strong>"🔄 Regenerar Cronograma"</strong> para generar los partidos automáticamente.
        Luego podrás revisar, editar fechas/horarios y <strong>guardar cuando estés conforme</strong>.</p>
      </div>
+     <div v-else-if="hasExistingMatches" class="info-card info">
+      <h4>📅 Cronograma Ya Configurado</h4>
+      <p>Este torneo ya tiene {{ fixtures.length }} partidos programados en la base de datos.</p>
+      <p><strong>Para editar partidos existentes:</strong></p>
+      <ul>
+       <li>Ve al <strong>menú principal del torneo</strong></li>
+       <li>Usa la sección de <strong>"Gestión de Partidos"</strong> para editar fechas, horarios, resultados</li>
+       <li>Este popup es solo para <strong>inicializar</strong> nuevos cronogramas</li>
+      </ul>
+      <p><small>💡 Tip: Si necesitas recrear completamente el cronograma, usa "🗑️ Limpiar Cronograma" primero.</small>
+      </p>
+     </div>
      <div v-else class="info-card success">
       <h4>✅ Cronograma Cargado</h4>
       <p>Se muestran {{ fixtures.length }} partidos programados. Puedes reordenar, editar fechas/horarios y guardar los
@@ -208,14 +220,17 @@
       <button @click="regenerateFixtures" class="btn-secondary" :disabled="loading || tournamentTeams.length < 2">
        🔄 Regenerar Cronograma
       </button>
-      <button @click="setWeeklySchedule" class="btn-secondary" :disabled="loading || fixtures.length === 0">
+      <button @click="setWeeklySchedule" class="btn-secondary"
+       :disabled="loading || fixtures.length === 0 || hasExistingMatches">
        📅 Programar Sábados
       </button>
       <button @click="clearFixtures" class="btn-warning" :disabled="loading || fixtures.length === 0">
        🗑️ Limpiar Cronograma
       </button>
-      <button @click="saveFixtures" class="btn-primary" :disabled="loading || fixtures.length === 0">
+      <button @click="saveFixtures" class="btn-primary"
+       :disabled="loading || fixtures.length === 0 || hasExistingMatches">
        <span v-if="loading">⏳ Guardando...</span>
+       <span v-else-if="hasExistingMatches">🚫 Cronograma Ya Existe</span>
        <span v-else>💾 Guardar Cronograma</span>
       </button>
      </div>
@@ -269,6 +284,7 @@ const startDate = ref('')
 const venue = ref('')
 const fixtures = ref<FixtureWithTeams[]>([])
 const draggedFixture = ref<number | null>(null)
+const hasExistingMatches = ref(false) // Nuevo estado para detectar matches existentes
 
 // Detectar automáticamente el tipo de fixture basado en la cantidad de grupos
 const suggestedFixtureType = computed(() => {
@@ -519,6 +535,7 @@ const regenerateFixtures = () => {
 // Limpiar cronograma
 const clearFixtures = () => {
  fixtures.value = []
+ hasExistingMatches.value = false // Resetear el estado cuando se limpia
 }
 
 // Guardar cronograma
@@ -569,6 +586,9 @@ const loadExistingFixtures = async () => {
    console.log('✅ Matches encontrados:', existingMatches.length)
    console.log('📋 Primer match de ejemplo:', existingMatches[0])
 
+   // Marcar que ya hay matches existentes en la BD
+   hasExistingMatches.value = true
+
    // Los matches ya vienen con homeTeam y awayTeam desde el backend
    // No necesitamos buscarlos en tournamentTeams
    fixtures.value = existingMatches.map(match => ({
@@ -608,8 +628,11 @@ const loadExistingFixtures = async () => {
    }
   } else {
    console.log('📋 No hay matches existentes para este torneo')
-   // No hay matches existentes, solo configurar valores por defecto
-   // NO generar fixtures automáticamente - el usuario lo hará con el botón
+
+   // No hay matches existentes - permitir crear nuevos
+   hasExistingMatches.value = false
+
+   // Configurar valores por defecto
    const today = new Date()
    startDate.value = today.toISOString().split('T')[0]
    venue.value = 'Estadio Principal'
@@ -814,6 +837,35 @@ watch(() => props.tournamentData?.groups?.length, (numberOfGroups) => {
  color: #047857;
  margin: 0;
  line-height: 1.5;
+}
+
+.info-card.info {
+ background: #dbeafe;
+ border: 2px solid #3b82f6;
+ border-radius: var(--border-radius-md);
+ padding: 1rem;
+}
+
+.info-card.info h4 {
+ color: #1d4ed8;
+ margin: 0 0 0.5rem 0;
+ font-size: 1.1rem;
+}
+
+.info-card.info p {
+ color: #1d4ed8;
+ margin: 0 0 0.5rem 0;
+ line-height: 1.5;
+}
+
+.info-card.info ul {
+ color: #1d4ed8;
+ margin: 0.5rem 0;
+ padding-left: 1.5rem;
+}
+
+.info-card.info li {
+ margin: 0.25rem 0;
 }
 
 .info-card.error {
