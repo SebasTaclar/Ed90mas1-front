@@ -126,7 +126,7 @@
               <span class="player-name">{{ getPlayerName(selectedPlayer) }}</span>
               <span class="team-name">({{ selectedTeam === 'home' ? matchData?.homeTeam.teamName :
                 matchData?.awayTeam.teamName
-              }})</span>
+                }})</span>
             </div>
           </div>
 
@@ -158,7 +158,6 @@
           </div>
           <div v-else class="events-list">
             <div v-for="event in sortedEvents" :key="event.id" class="event-item" :class="event.type">
-              <div class="event-time">#{{ event.eventIndex }}</div>
               <div class="event-details">
                 <div class="event-type">
                   <span class="event-icon">{{ getEventIcon(event.type) }}</span>
@@ -337,20 +336,12 @@ const awayAttendingPlayers = computed((): Player[] => {
 
 const sortedEvents = computed(() => {
   // Ordenar por createdAt/timestamp descendente (más reciente primero)
-  const sorted = [...matchEvents.value].sort((a, b) => {
+  return [...matchEvents.value].sort((a, b) => {
     const timeA = a.timestamp.getTime()
     const timeB = b.timestamp.getTime()
     return timeB - timeA // Más reciente primero
   })
-
-  // Agregar índice a cada evento (1 para el más reciente, etc.)
-  return sorted.map((event, index) => ({
-    ...event,
-    eventIndex: index + 1
-  }))
-})
-
-// Funciones de utilidad
+})// Funciones de utilidad
 const getPlayerName = (player: Player): string => {
   return `${player.firstName} ${player.lastName}`
 }
