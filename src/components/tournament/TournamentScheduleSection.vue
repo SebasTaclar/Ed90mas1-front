@@ -73,13 +73,10 @@
       <!-- Partidos agrupados por fecha -->
       <div v-else class="matches-grouped">
         <div v-for="(matchesForDate, date) in matchesByDate" :key="date" class="date-group">
-          <!-- Encabezado de fecha -->
-          <div class="date-header">
-            <div class="date-info">
-              <h3 class="date-title">{{ formatDateGroupHeader(String(date)) }}</h3>
-              <span class="matches-count">{{ matchesForDate.length }} partido{{ matchesForDate.length > 1 ? 's' : ''
-                }}</span>
-            </div>
+          <!-- Encabezado de fecha simplificado -->
+          <div class="date-header-simple">
+            <h4 class="date-simple">{{ formatDateGroupHeader(String(date)) }}</h4>
+            <span class="matches-count-simple">{{ matchesForDate.length }}</span>
           </div>
 
           <!-- Tabla para esta fecha -->
@@ -905,6 +902,35 @@ const deleteMatch = async (matchId: number) => {
   color: var(--white);
   padding: 1.5rem 2rem;
   border-bottom: 2px solid var(--tertiary-blue);
+}
+
+.date-header-simple {
+  background: var(--app-bg-secondary);
+  border-bottom: 2px solid var(--app-border-color);
+  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: var(--border-radius-md) var(--border-radius-md) 0 0;
+}
+
+.date-simple {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 0;
+  color: var(--app-text-primary);
+  text-transform: capitalize;
+}
+
+.matches-count-simple {
+  background: var(--primary-blue);
+  color: var(--white);
+  padding: 0.25rem 0.6rem;
+  border-radius: var(--border-radius-full);
+  font-size: 0.75rem;
+  font-weight: 600;
+  min-width: 20px;
+  text-align: center;
 }
 
 .date-info {

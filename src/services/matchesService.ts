@@ -19,6 +19,8 @@ export interface Match {
   endTime?: string
   createdAt?: string
   updatedAt?: string
+  // Jugadores asistentes - formato: { "teamId": [playerId1, playerId2, ...] }
+  attendingPlayers?: Record<string, number[]>
   // Objetos completos que vienen del backend
   tournament?: {
     id: number

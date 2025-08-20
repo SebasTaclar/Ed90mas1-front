@@ -4,7 +4,7 @@
     <div class="match-header">
       <button @click="goBack" class="back-button">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="m15 18-6-6 6-6"/>
+          <path d="m15 18-6-6 6-6" />
         </svg>
         Volver
       </button>
@@ -20,31 +20,17 @@
 
     <!-- Controles de navegación entre equipos -->
     <div class="team-navigation">
-      <button
-        @click="currentTeam = 'home'"
-        :class="['team-nav-btn', { active: currentTeam === 'home' }]"
-      >
-        <img
-          v-if="matchData?.homeTeam.teamLogo"
-          :src="matchData.homeTeam.teamLogo"
-          :alt="matchData.homeTeam.teamName"
-          class="team-logo-small"
-        >
+      <button @click="currentTeam = 'home'" :class="['team-nav-btn', { active: currentTeam === 'home' }]">
+        <img v-if="matchData?.homeTeam.teamLogo" :src="matchData.homeTeam.teamLogo" :alt="matchData.homeTeam.teamName"
+          class="team-logo-small">
         {{ matchData?.homeTeam.teamName }}
       </button>
 
       <div class="vs-indicator">VS</div>
 
-      <button
-        @click="currentTeam = 'away'"
-        :class="['team-nav-btn', { active: currentTeam === 'away' }]"
-      >
-        <img
-          v-if="matchData?.awayTeam.teamLogo"
-          :src="matchData.awayTeam.teamLogo"
-          :alt="matchData.awayTeam.teamName"
-          class="team-logo-small"
-        >
+      <button @click="currentTeam = 'away'" :class="['team-nav-btn', { active: currentTeam === 'away' }]">
+        <img v-if="matchData?.awayTeam.teamLogo" :src="matchData.awayTeam.teamLogo" :alt="matchData.awayTeam.teamName"
+          class="team-logo-small">
         {{ matchData?.awayTeam.teamName }}
       </button>
     </div>
@@ -53,12 +39,8 @@
     <div class="team-lineup-container" v-if="!loading">
       <div class="team-card">
         <div class="team-header">
-          <img
-            v-if="currentTeamLineup?.teamLogo"
-            :src="currentTeamLineup.teamLogo"
-            :alt="currentTeamLineup.teamName"
-            class="team-logo-header"
-          >
+          <img v-if="currentTeamLineup?.teamLogo" :src="currentTeamLineup.teamLogo" :alt="currentTeamLineup.teamName"
+            class="team-logo-header">
           <div class="team-info">
             <h2>{{ currentTeamLineup?.teamName }}</h2>
             <p class="probable-xi">FORMACIÓN 1-3-3</p>
@@ -86,22 +68,13 @@
 
           <!-- Jugadores distribuidos en formación simple -->
           <div class="players-formation">
-            <div
-              v-for="(player, index) in currentTeamLineup?.players"
-              :key="player.id"
-              class="player-item"
+            <div v-for="(player, index) in currentTeamLineup?.players" :key="player.id" class="player-item"
               :class="{ 'player-selected': selectedPlayers.includes(player.id) }"
               :style="getPlayerPosition(index, currentTeamLineup?.players.length || 0)"
-              @click="togglePlayerSelection(player.id)"
-            >
+              @click="togglePlayerSelection(player.id)">
               <div class="player-photo-container">
-                <img
-                  v-if="player.photoPath"
-                  :src="player.photoPath"
-                  :alt="getPlayerName(player)"
-                  class="player-photo"
-                  @error="handlePhotoError"
-                >
+                <img v-if="player.photoPath" :src="player.photoPath" :alt="getPlayerName(player)" class="player-photo"
+                  @error="handlePhotoError">
                 <div v-else class="player-initials">
                   {{ getPlayerInitials(player) }}
                 </div>
@@ -116,14 +89,24 @@
         <div class="selection-summary" v-if="selectedPlayers.length > 0">
           <h3>Jugadores Convocados ({{ selectedPlayers.length }})</h3>
           <div class="selected-players-list">
-            <div
-              v-for="playerId in selectedPlayers"
-              :key="playerId"
-              class="selected-player-chip"
-            >
+            <div v-for="playerId in selectedPlayers" :key="playerId" class="selected-player-chip">
               <span>{{ getSelectedPlayerName(playerId) }}</span>
               <button @click="togglePlayerSelection(playerId)" class="remove-player-btn">×</button>
             </div>
+          </div>
+        </div>
+
+        <!-- Botones de acción -->
+        <div class="match-actions">
+          <button v-if="selectedPlayers.length > 0" @click="confirmTeamLineup" :disabled="isConfirmingLineup"
+            class="btn-confirm-lineup">
+            <span v-if="isConfirmingLineup">⏳ Confirmando...</span>
+            <span v-else>✅ Confirmar Plantilla ({{ selectedPlayers.length }} jugadores)</span>
+          </button>
+
+          <div v-if="attendingPlayersStatus" class="lineup-status" :class="attendingPlayersStatus.type">
+            <span class="status-icon">{{ attendingPlayersStatus.icon }}</span>
+            <span>{{ attendingPlayersStatus.message }}</span>
           </div>
         </div>
       </div>
@@ -138,7 +121,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { matchesService } from '@/services/matchesService'
 import { playerService } from '@/services/api/playerService'
@@ -168,6 +151,12 @@ const loading = ref(true)
 const currentTeam = ref<'home' | 'away'>('home')
 const matchData = ref<SimpleMatchVersus | null>(null)
 const selectedPlayers = ref<number[]>([])
+const isConfirmingLineup = ref(false)
+const attendingPlayersStatus = ref<{
+  type: 'success' | 'error' | 'info'
+  icon: string
+  message: string
+} | null>(null)
 
 // Computed para obtener la alineación del equipo actual
 const currentTeamLineup = computed((): SimpleTeamLineup | null => {
@@ -256,6 +245,95 @@ const getSelectedPlayerName = (playerId: number): string => {
 
 const goBack = () => {
   router.back()
+}
+
+// Función para confirmar la plantilla de jugadores asistentes
+const confirmTeamLineup = async () => {
+  if (!matchData.value || selectedPlayers.value.length === 0) return
+
+  isConfirmingLineup.value = true
+  attendingPlayersStatus.value = null
+
+  try {
+    const currentTeamId = currentTeam.value === 'home'
+      ? matchData.value.homeTeam.teamId
+      : matchData.value.awayTeam.teamId
+
+    // Obtener los jugadores asistentes actuales (si existen)
+    const match = await matchesService.getMatchById(matchData.value.matchId)
+    const existingAttendingPlayers = match?.attendingPlayers || {}
+
+    // Preparar el objeto de jugadores asistentes
+    const updatedAttendingPlayers = {
+      ...existingAttendingPlayers,
+      [currentTeamId.toString()]: [...selectedPlayers.value]
+    }
+
+    // Actualizar el partido con los jugadores asistentes
+    await matchesService.updateMatch(matchData.value.matchId, {
+      attendingPlayers: updatedAttendingPlayers
+    })
+
+    attendingPlayersStatus.value = {
+      type: 'success',
+      icon: '✅',
+      message: `Plantilla de ${currentTeam.value === 'home' ? matchData.value.homeTeam.teamName : matchData.value.awayTeam.teamName} confirmada exitosamente`
+    }
+
+    // Limpiar el mensaje después de 3 segundos
+    setTimeout(() => {
+      attendingPlayersStatus.value = null
+    }, 3000)
+
+  } catch (error) {
+    console.error('Error confirming lineup:', error)
+
+    attendingPlayersStatus.value = {
+      type: 'error',
+      icon: '❌',
+      message: 'Error al confirmar la plantilla. Inténtalo de nuevo.'
+    }
+
+    // Limpiar el mensaje de error después de 5 segundos
+    setTimeout(() => {
+      attendingPlayersStatus.value = null
+    }, 5000)
+  } finally {
+    isConfirmingLineup.value = false
+  }
+}
+
+// Función para cargar los jugadores asistentes existentes
+const loadExistingAttendingPlayers = async () => {
+  if (!matchData.value) return
+
+  try {
+    const match = await matchesService.getMatchById(matchData.value.matchId)
+    if (match?.attendingPlayers) {
+      const currentTeamId = currentTeam.value === 'home'
+        ? matchData.value.homeTeam.teamId
+        : matchData.value.awayTeam.teamId
+
+      const teamAttendingPlayers = match.attendingPlayers[currentTeamId.toString()]
+      if (teamAttendingPlayers && Array.isArray(teamAttendingPlayers)) {
+        selectedPlayers.value = [...teamAttendingPlayers]
+
+        // Mostrar información de que ya hay jugadores confirmados
+        attendingPlayersStatus.value = {
+          type: 'info',
+          icon: 'ℹ️',
+          message: `${teamAttendingPlayers.length} jugadores ya confirmados para este equipo`
+        }
+
+        // Limpiar el mensaje después de 3 segundos
+        setTimeout(() => {
+          attendingPlayersStatus.value = null
+        }, 3000)
+      }
+    }
+  } catch (error) {
+    console.error('Error loading existing attending players:', error)
+  }
 }
 
 // Cargar datos reales del partido
@@ -359,6 +437,16 @@ const loadMatchData = async () => {
 onMounted(async () => {
   await loadMatchData()
 })
+
+// Watcher para cargar jugadores asistentes cuando cambie el equipo
+watch(currentTeam, async () => {
+  // Limpiar selección actual
+  selectedPlayers.value = []
+  attendingPlayersStatus.value = null
+
+  // Cargar jugadores asistentes del equipo actual
+  await loadExistingAttendingPlayers()
+}, { immediate: true })
 </script>
 
 <style scoped>
@@ -713,6 +801,92 @@ onMounted(async () => {
   background: #ef4444;
 }
 
+.match-actions {
+  margin-top: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: center;
+}
+
+.btn-confirm-lineup {
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  border: none;
+  color: white;
+  padding: 1rem 2rem;
+  border-radius: 1rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 280px;
+  justify-content: center;
+  box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3);
+}
+
+.btn-confirm-lineup:hover:not(:disabled) {
+  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(34, 197, 94, 0.4);
+}
+
+.btn-confirm-lineup:disabled {
+  background: rgba(255, 255, 255, 0.2);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+  opacity: 0.7;
+}
+
+.lineup-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem 1.5rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  text-align: center;
+  max-width: 400px;
+  animation: fadeInUp 0.3s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.lineup-status.success {
+  background: rgba(34, 197, 94, 0.2);
+  border: 1px solid #22c55e;
+  color: #22c55e;
+}
+
+.lineup-status.error {
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid #ef4444;
+  color: #ef4444;
+}
+
+.lineup-status.info {
+  background: rgba(59, 130, 246, 0.2);
+  border: 1px solid #3b82f6;
+  color: #3b82f6;
+}
+
+.status-icon {
+  font-size: 1.1rem;
+}
+
 .loading-container {
   display: flex;
   flex-direction: column;
@@ -732,7 +906,9 @@ onMounted(async () => {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Responsive design */
@@ -782,6 +958,17 @@ onMounted(async () => {
     aspect-ratio: 5/4;
     min-height: 320px;
   }
+
+  .btn-confirm-lineup {
+    font-size: 1rem;
+    padding: 0.875rem 1.5rem;
+    min-width: 250px;
+  }
+
+  .lineup-status {
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+  }
 }
 
 @media (max-width: 480px) {
@@ -805,6 +992,22 @@ onMounted(async () => {
   .field-view {
     aspect-ratio: 4/3;
     min-height: 280px;
+  }
+
+  .btn-confirm-lineup {
+    font-size: 0.9rem;
+    padding: 0.75rem 1rem;
+    min-width: 220px;
+  }
+
+  .match-actions {
+    margin-top: 1.5rem;
+  }
+
+  .lineup-status {
+    padding: 0.6rem 0.8rem;
+    font-size: 0.8rem;
+    max-width: 300px;
   }
 }
 </style>
