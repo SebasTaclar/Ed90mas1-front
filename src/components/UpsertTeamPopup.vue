@@ -310,19 +310,29 @@ const tournamentHasAnyMatches = (tournamentId: number): boolean => {
   return matches.length > 0
 }
 
+// Función para verificar si un torneo tiene configuración de grupos
+const tournamentHasGroupConfiguration = (tournamentId: number): boolean => {
+  const tournament = tournaments.value?.find(t => t.id === tournamentId)
+  return tournament?.configuration?.isConfigured === true &&
+    (tournament.teamAssignments?.length || 0) > 0
+}
+
 // Computed para obtener tournamentIds que no se pueden modificar
 const lockedTournamentIds = computed(() => {
   return availableTournaments.value
     .filter(tournament => {
-      // En modo crear: bloquear torneos que ya tienen partidos
+      // En modo crear: bloquear torneos que ya tienen partidos o configuración de grupos
       if (props.mode === 'create') {
-        return tournamentHasAnyMatches(tournament.id)
+        return tournamentHasAnyMatches(tournament.id) ||
+          tournamentHasGroupConfiguration(tournament.id)
       }
 
       // En modo editar: bloquear torneos donde el equipo ya tiene partidos
       // O torneos que tienen partidos en general (para evitar agregar nuevos equipos)
+      // O torneos que ya tienen configuración de grupos
       return tournamentHasMatchesWithTeam(tournament.id) ||
-        (tournamentHasAnyMatches(tournament.id) && !formData.value.tournamentIds.includes(tournament.id))
+        (tournamentHasAnyMatches(tournament.id) && !formData.value.tournamentIds.includes(tournament.id)) ||
+        (tournamentHasGroupConfiguration(tournament.id) && !formData.value.tournamentIds.includes(tournament.id))
     })
     .map(tournament => tournament.id)
 })
@@ -330,7 +340,11 @@ const lockedTournamentIds = computed(() => {
 // Función para obtener el mensaje de bloqueo específico por torneo
 const getLockMessage = (tournamentId: number): string => {
   if (props.mode === 'create') {
-    return '🚫 No se puede agregar: el torneo ya tiene partidos creados'
+    if (tournamentHasAnyMatches(tournamentId)) {
+      return '🚫 No se puede agregar: el torneo ya tiene partidos creados'
+    } else if (tournamentHasGroupConfiguration(tournamentId)) {
+      return '🚫 No se puede agregar: el torneo ya tiene configuración de grupos'
+    }
   }
 
   // Modo editar
@@ -338,6 +352,8 @@ const getLockMessage = (tournamentId: number): string => {
     return '🚫 No se puede remover: ya existen partidos con este equipo'
   } else if (tournamentHasAnyMatches(tournamentId)) {
     return '🚫 No se puede agregar: el torneo ya tiene partidos creados'
+  } else if (tournamentHasGroupConfiguration(tournamentId)) {
+    return '🚫 No se puede agregar: el torneo ya tiene configuración de grupos'
   }
 
   return '🚫 No se puede modificar'

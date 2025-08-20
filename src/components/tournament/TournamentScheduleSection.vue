@@ -59,7 +59,7 @@
       </div>
     </div>
 
-    <!-- Tabla de partidos -->
+    <!-- Tabla de partidos agrupados por fecha -->
     <div class="matches-table-container">
       <div v-if="matchesLoading" class="loading">
         <div class="spinner"></div>
@@ -70,103 +70,121 @@
         <p>No hay partidos{{ hasActiveFilters ? ' que coincidan con los filtros' : '' }}</p>
       </div>
 
-      <div v-else class="matches-table">
-        <div class="table-header">
-          <div class="col-date">Fecha</div>
-          <div class="col-teams">Equipos</div>
-          <div class="col-round">Fase</div>
-          <div class="col-location">Lugar</div>
-          <div class="col-status">Estado</div>
-          <div class="col-actions">Acciones</div>
-        </div>
-
-        <div v-for="match in filteredMatches" :key="match.id" class="table-row" :class="getRowClass(match)">
-          <div class="col-date">
-            <div v-if="isEditing(match.id!, 'date')" class="edit-date-container">
-              <div class="edit-inputs">
-                <input v-model="editValues.date" type="date" class="edit-input date-input" :disabled="isUpdating" />
-                <input v-model="editValues.time" type="time" class="edit-input time-input" :disabled="isUpdating" />
-              </div>
-              <div class="edit-actions">
-                <button @click="saveChanges" class="save-btn" :disabled="isUpdating">
-                  <span v-if="isUpdating">⏳</span>
-                  <span v-else>✓</span>
-                </button>
-                <button @click="cancelEditing" class="cancel-btn" :disabled="isUpdating">✕</button>
-              </div>
-            </div>
-            <div v-else class="date-info">
-              <span class="date">{{ formatDate(match.matchDate || match.scheduledDate) }}</span>
-              <span class="time">{{ formatTime(match.matchDate || match.scheduledDate) }}</span>
+      <!-- Partidos agrupados por fecha -->
+      <div v-else class="matches-grouped">
+        <div v-for="(matchesForDate, date) in matchesByDate" :key="date" class="date-group">
+          <!-- Encabezado de fecha -->
+          <div class="date-header">
+            <div class="date-info">
+              <h3 class="date-title">{{ formatDateGroupHeader(String(date)) }}</h3>
+              <span class="matches-count">{{ matchesForDate.length }} partido{{ matchesForDate.length > 1 ? 's' : ''
+                }}</span>
             </div>
           </div>
 
-          <div class="col-teams">
-            <div class="teams-info">
-              <div class="team home">
-                <img :src="match.homeTeam?.logoPath || '/images/logo.png'" :alt="match.homeTeam?.name" class="team-logo"
-                  @error="handleImageError">
-                <span class="team-name">{{ match.homeTeam?.name || 'TBD' }}</span>
-              </div>
-              <span class="vs">VS</span>
-              <div class="team away">
-                <img :src="match.awayTeam?.logoPath || '/images/logo.png'" :alt="match.awayTeam?.name" class="team-logo"
-                  @error="handleImageError">
-                <span class="team-name">{{ match.awayTeam?.name || 'TBD' }}</span>
-              </div>
+          <!-- Tabla para esta fecha -->
+          <div class="matches-table">
+            <div class="table-header">
+              <div class="col-time">Hora</div>
+              <div class="col-teams">Equipos</div>
+              <div class="col-round">Fase</div>
+              <div class="col-location">Lugar</div>
+              <div class="col-status">Estado</div>
+              <div class="col-actions">Acciones</div>
             </div>
-          </div>
 
-          <div class="col-round">
-            <div class="round-info">
-              <span v-if="match.round" class="round-badge" :class="getRoundClass(match.round)">
-                {{ match.round }}
-              </span>
-              <span v-else class="round-default">Fase de Grupos</span>
-            </div>
-          </div>
-
-          <div class="col-location">
-            <div v-if="isEditing(match.id!, 'location')" class="edit-location-container">
-              <div class="edit-inputs">
-                <input v-model="editValues.location" type="text" placeholder="Ingrese el lugar"
-                  class="edit-input location-input" :disabled="isUpdating" />
+            <div v-for="match in matchesForDate" :key="match.id" class="table-row" :class="getRowClass(match)">
+              <div class="col-time">
+                <div v-if="isEditing(match.id!, 'date')" class="edit-time-container">
+                  <div class="edit-inputs">
+                    <input v-model="editValues.date" type="date" class="edit-input date-input" :disabled="isUpdating" />
+                    <input v-model="editValues.time" type="time" class="edit-input time-input" :disabled="isUpdating" />
+                  </div>
+                  <div class="edit-actions">
+                    <button @click="saveChanges" class="save-btn" :disabled="isUpdating">
+                      <span v-if="isUpdating">⏳</span>
+                      <span v-else>✓</span>
+                    </button>
+                    <button @click="cancelEditing" class="cancel-btn" :disabled="isUpdating">✕</button>
+                  </div>
+                </div>
+                <div v-else class="time-info">
+                  <span class="time-display">{{ formatTime(match.matchDate || match.scheduledDate) }}</span>
+                </div>
               </div>
-              <div class="edit-actions">
-                <button @click="saveChanges" class="save-btn" :disabled="isUpdating">
-                  <span v-if="isUpdating">⏳</span>
-                  <span v-else>✓</span>
-                </button>
-                <button @click="cancelEditing" class="cancel-btn" :disabled="isUpdating">✕</button>
+
+              <div class="col-teams">
+                <div class="teams-info">
+                  <div class="team home">
+                    <img :src="match.homeTeam?.logoPath || '/images/logo.png'" :alt="match.homeTeam?.name"
+                      class="team-logo" @error="handleImageError">
+                    <span class="team-name">{{ match.homeTeam?.name || 'TBD' }}</span>
+                  </div>
+                  <span class="vs">VS</span>
+                  <div class="team away">
+                    <img :src="match.awayTeam?.logoPath || '/images/logo.png'" :alt="match.awayTeam?.name"
+                      class="team-logo" @error="handleImageError">
+                    <span class="team-name">{{ match.awayTeam?.name || 'TBD' }}</span>
+                  </div>
+                </div>
               </div>
-            </div>
-            <div v-else class="location-info">
-              <span class="location-text">{{ match.location || 'Por definir' }}</span>
-            </div>
-          </div>
 
-          <div class="col-status">
-            <span class="status-badge" :class="getStatusClass(match.status)">
-              {{ getStatusText(match.status) }}
-            </span>
-          </div>
+              <div class="col-round">
+                <div class="round-info">
+                  <span v-if="match.round" class="round-badge" :class="getRoundClass(match.round)">
+                    {{ match.round }}
+                  </span>
+                  <span v-else class="round-default">Fase de Grupos</span>
+                </div>
+              </div>
 
-          <div class="col-actions">
-            <div class="action-buttons">
-              <button @click="startEditing(match.id!, 'date')" class="edit-btn date-edit"
-                :disabled="editingMatch !== null" title="Editar fecha y hora">
-                📅
-              </button>
-              <button @click="startEditing(match.id!, 'location')" class="edit-btn location-edit"
-                :disabled="editingMatch !== null" title="Editar lugar">
-                📍
-              </button>
-              <!-- Botón eliminar solo para partidos de fase eliminatoria (NO Fase de grupos) -->
-              <button v-if="match.round && match.round.trim() !== '' && match.round !== 'Fase de grupos'"
-                @click="confirmDeleteMatch(match)" class="edit-btn delete-btn"
-                :disabled="editingMatch !== null || isDeletingMatch" title="Eliminar partido eliminatorio">
-                🗑️
-              </button>
+              <div class="col-location">
+                <div v-if="isEditing(match.id!, 'location')" class="edit-location-container">
+                  <div class="edit-inputs">
+                    <input v-model="editValues.location" type="text" placeholder="Ingrese el lugar"
+                      class="edit-input location-input" :disabled="isUpdating" />
+                  </div>
+                  <div class="edit-actions">
+                    <button @click="saveChanges" class="save-btn" :disabled="isUpdating">
+                      <span v-if="isUpdating">⏳</span>
+                      <span v-else>✓</span>
+                    </button>
+                    <button @click="cancelEditing" class="cancel-btn" :disabled="isUpdating">✕</button>
+                  </div>
+                </div>
+                <div v-else class="location-info">
+                  <span class="location-text">{{ match.location || 'Por definir' }}</span>
+                </div>
+              </div>
+
+              <div class="col-status">
+                <span class="status-badge" :class="getStatusClass(match.status)">
+                  {{ getStatusText(match.status) }}
+                </span>
+              </div>
+
+              <div class="col-actions">
+                <div class="action-buttons">
+                  <button @click="goToMatchVersus(match)" class="edit-btn match-versus"
+                    :disabled="!match.homeTeam || !match.awayTeam" title="Confirmar jugadores del partido">
+                    👥
+                  </button>
+                  <button @click="startEditing(match.id!, 'date')" class="edit-btn date-edit"
+                    :disabled="editingMatch !== null" title="Editar fecha y hora">
+                    📅
+                  </button>
+                  <button @click="startEditing(match.id!, 'location')" class="edit-btn location-edit"
+                    :disabled="editingMatch !== null" title="Editar lugar">
+                    📍
+                  </button>
+                  <!-- Botón eliminar solo para partidos de fase eliminatoria (NO Fase de grupos) -->
+                  <button v-if="match.round && match.round.trim() !== '' && match.round !== 'Fase de grupos'"
+                    @click="confirmDeleteMatch(match)" class="edit-btn delete-btn"
+                    :disabled="editingMatch !== null || isDeletingMatch" title="Eliminar partido eliminatorio">
+                    🗑️
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -185,6 +203,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import type { Match } from '@/services/matchesService'
 import { matchesService } from '@/services/matchesService'
 import CreateMatchPopup from '@/components/CreateMatchPopup.vue'
@@ -205,6 +224,8 @@ const props = defineProps<Props>()
 const emit = defineEmits<{
   'match-updated': []
 }>()
+
+const router = useRouter()
 
 // Estado de filtros
 const selectedTeam = ref('')
@@ -290,6 +311,35 @@ const filteredMatches = computed(() => {
   })
 })
 
+// Agrupar partidos por fecha
+const matchesByDate = computed(() => {
+  const grouped: { [key: string]: Match[] } = {}
+
+  filteredMatches.value.forEach(match => {
+    const matchDate = match.matchDate || match.scheduledDate
+    if (!matchDate) return
+
+    const date = new Date(matchDate)
+    const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+
+    if (!grouped[dateKey]) {
+      grouped[dateKey] = []
+    }
+    grouped[dateKey].push(match)
+  })
+
+  // Ordenar partidos dentro de cada fecha por hora
+  Object.keys(grouped).forEach(dateKey => {
+    grouped[dateKey].sort((a, b) => {
+      const dateA = a.matchDate || a.scheduledDate || ''
+      const dateB = b.matchDate || b.scheduledDate || ''
+      return dateA.localeCompare(dateB)
+    })
+  })
+
+  return grouped
+})
+
 const hasActiveFilters = computed(() => {
   return selectedTeam.value !== '' || selectedDate.value !== ''
 })
@@ -309,16 +359,6 @@ const completedMatches = computed(() => {
 const clearFilters = () => {
   selectedTeam.value = ''
   selectedDate.value = ''
-}
-
-const formatDate = (dateString?: string) => {
-  if (!dateString) return 'Fecha TBD'
-  const date = new Date(dateString)
-  return date.toLocaleDateString('es-ES', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric'
-  })
 }
 
 const formatTime = (dateString?: string) => {
@@ -343,6 +383,29 @@ const formatDateForSelect = (dateString: string) => {
   })
 
   return isToday ? `${formatted} (Hoy)` : formatted
+}
+
+const formatDateGroupHeader = (dateString: string) => {
+  const date = new Date(dateString + 'T00:00:00')
+  const today = new Date()
+  const tomorrow = new Date(today)
+  tomorrow.setDate(today.getDate() + 1)
+
+  const isToday = date.toDateString() === today.toDateString()
+  const isTomorrow = date.toDateString() === tomorrow.toDateString()
+
+  if (isToday) {
+    return `Hoy, ${date.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}`
+  } else if (isTomorrow) {
+    return `Mañana, ${date.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}`
+  } else {
+    return date.toLocaleDateString('es-ES', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    })
+  }
 }
 
 const getStatusText = (status?: string) => {
@@ -417,6 +480,17 @@ const getRoundClass = (round: string) => {
 const handleImageError = (event: Event) => {
   const img = event.target as HTMLImageElement
   img.src = '/images/logo.png'
+}
+
+// Función para redirigir a la página de confirmación de jugadores del partido
+const goToMatchVersus = (match: Match) => {
+  if (!match.id) {
+    console.error('No se puede navegar: el partido no tiene ID')
+    return
+  }
+
+  // Navegar a la vista matchVersus con el ID del partido
+  router.push(`/match-versus/${match.id}`)
 }
 
 // Funciones del modal de creación
@@ -811,13 +885,57 @@ const deleteMatch = async (matchId: number) => {
   overflow: hidden;
 }
 
+/* Agrupación por fechas */
+.matches-grouped {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.date-group {
+  background: var(--app-bg-primary);
+  border-radius: var(--border-radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--app-border-color);
+  box-shadow: var(--shadow-light);
+}
+
+.date-header {
+  background: linear-gradient(135deg, var(--primary-blue) 0%, var(--tertiary-blue) 100%);
+  color: var(--white);
+  padding: 1.5rem 2rem;
+  border-bottom: 2px solid var(--tertiary-blue);
+}
+
+.date-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.date-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0;
+  text-transform: capitalize;
+}
+
+.matches-count {
+  background: rgba(255, 255, 255, 0.2);
+  color: var(--white);
+  padding: 0.5rem 1rem;
+  border-radius: var(--border-radius-full);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
 .matches-table {
   width: 100%;
 }
 
 .table-header {
   display: grid;
-  grid-template-columns: 250px 1fr 180px 200px 180px 140px;
+  grid-template-columns: 100px 1fr 180px 200px 180px 180px;
   background: var(--primary-blue);
   color: var(--white);
   font-weight: 600;
@@ -827,7 +945,7 @@ const deleteMatch = async (matchId: number) => {
 
 .table-row {
   display: grid;
-  grid-template-columns: 250px 1fr 180px 200px 180px 140px;
+  grid-template-columns: 100px 1fr 180px 200px 180px 180px;
   padding: 1rem;
   gap: 1rem;
   border-bottom: 1px solid var(--app-border-color);
@@ -876,13 +994,42 @@ const deleteMatch = async (matchId: number) => {
 }
 
 /* Columnas */
-.col-date,
+.col-time,
 .col-teams,
 .col-round,
 .col-location,
 .col-status,
 .col-actions {
   display: flex;
+  align-items: center;
+}
+
+/* Columna de hora */
+.col-time {
+  justify-content: center;
+}
+
+.time-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.time-display {
+  font-weight: 600;
+  color: var(--app-text-primary);
+  font-size: 1rem;
+  background: var(--app-bg-secondary);
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--border-radius-md);
+  border: 1px solid var(--app-border-color);
+}
+
+.edit-time-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
   align-items: center;
 }
 
@@ -1025,6 +1172,17 @@ const deleteMatch = async (matchId: number) => {
 .edit-btn.location-edit:hover:not(:disabled) {
   background: #10b981;
   border-color: #10b981;
+}
+
+.edit-btn.match-versus {
+  border-color: rgba(59, 130, 246, 0.3);
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.edit-btn.match-versus:hover:not(:disabled) {
+  background: #3b82f6;
+  border-color: #3b82f6;
+  color: white;
 }
 
 .edit-btn.delete-btn {
@@ -1236,7 +1394,7 @@ const deleteMatch = async (matchId: number) => {
 
   .table-header,
   .table-row {
-    grid-template-columns: 180px 1fr 150px 160px 130px 120px;
+    grid-template-columns: 80px 1fr 150px 160px 130px 150px;
   }
 
   .team-name {
@@ -1247,6 +1405,10 @@ const deleteMatch = async (matchId: number) => {
     width: 32px;
     height: 32px;
     font-size: 0.9rem;
+  }
+
+  .action-buttons {
+    gap: 0.25rem;
   }
 }
 

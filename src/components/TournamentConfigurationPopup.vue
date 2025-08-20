@@ -125,6 +125,14 @@
 
         <!-- Botones de acción -->
         <div class="footer-buttons">
+          <!-- Botón de eliminar configuración (solo si ya existe configuración) -->
+          <button v-if="tournamentData?.configuration?.isConfigured" @click="showDeleteConfirmation" class="btn-danger"
+            :disabled="loading || isCreatingConfiguration || isDeletingConfiguration"
+            title="Eliminar toda la configuración del torneo">
+            <span v-if="isDeletingConfiguration">⏳ Eliminando...</span>
+            <span v-else>🗑️ Eliminar Configuración</span>
+          </button>
+
           <button @click="$emit('close')" class="btn-secondary" :disabled="loading || isCreatingConfiguration">
             Cancelar
           </button>
@@ -136,6 +144,12 @@
         </div>
       </div>
     </div>
+
+    <!-- Modal de confirmación para eliminar configuración -->
+    <ConfirmationModal v-if="showDeleteConfirmationModal" title="¿Eliminar Configuración del Torneo?"
+      message="Esta acción eliminará completamente la configuración de grupos del torneo. Los equipos permanecerán registrados, pero se perderán todas las asignaciones de grupos. ¿Estás seguro de que deseas continuar?"
+      confirm-text="Sí, Eliminar" cancel-text="Cancelar" danger @confirm="confirmDeleteConfiguration"
+      @cancel="cancelDeleteConfiguration" />
   </div>
 </template>
 
@@ -146,6 +160,7 @@ import { useTournamentConfiguration } from '@/composables/useTournamentConfigura
 import { useFixtures } from '@/composables/useFixtures';
 import { matchesService } from '@/services/matchesService';
 import Spinner from '@/components/Spinner.vue';
+import ConfirmationModal from '@/components/ConfirmationModal.vue';
 
 interface Props {
   tournamentData: Tournament | null;
@@ -164,7 +179,8 @@ const emit = defineEmits<Emits>();
 const {
   generateAutoAssignments,
   generateRandomAssignments,
-  validateConfiguration
+  validateConfiguration,
+  deleteConfiguration
 } = useTournamentConfiguration();
 
 // Estado local del componente
@@ -190,6 +206,10 @@ const isCreatingConfiguration = ref(false);
 const isSaving = ref(false);
 const isConfigurationLoaded = ref(false); // Nueva variable para evitar cargas múltiples
 const existingMatches = ref<any[]>([]); // Para almacenar los partidos existentes del torneo
+
+// Estado para el diálogo de confirmación de eliminación
+const showDeleteConfirmationModal = ref(false);
+const isDeletingConfiguration = ref(false);
 
 // Computed properties
 const availableGroupNumbers = computed(() => {
@@ -428,6 +448,49 @@ const saveConfiguration = async () => {
   } finally {
     isSaving.value = false;
   }
+};
+
+// Métodos para eliminar configuración
+const showDeleteConfirmation = () => {
+  showDeleteConfirmationModal.value = true;
+};
+
+const confirmDeleteConfiguration = async () => {
+  if (!props.tournamentData?.id) return;
+
+  isDeletingConfiguration.value = true;
+  showDeleteConfirmationModal.value = false;
+
+  try {
+    await deleteConfiguration(props.tournamentData.id);
+
+    // Limpiar el estado local después de eliminar exitosamente
+    resetConfigurationState();
+
+    // Cerrar el modal después de eliminar
+    emit('close');
+  } catch (error) {
+    console.error('Error deleting configuration:', error);
+    // El error ya se maneja en el composable con notificaciones
+  } finally {
+    isDeletingConfiguration.value = false;
+  }
+};
+
+const cancelDeleteConfiguration = () => {
+  showDeleteConfirmationModal.value = false;
+};
+
+const resetConfigurationState = () => {
+  localConfiguration.value = {
+    numberOfGroups: 0,
+    teamsPerGroup: 0,
+    groups: [],
+    isConfigured: false
+  };
+  previewGroups.value = [];
+  isConfigurationLoaded.value = false;
+  existingMatches.value = [];
 };
 
 // Función para cargar partidos existentes del torneo
@@ -1272,6 +1335,43 @@ watch(() => props.tournamentData, async (newTournament, oldTournament) => {
   background: var(--app-hover-bg);
   border-color: var(--primary-blue);
   transform: translateY(-2px);
+}
+
+.btn-danger {
+  background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+  border: none;
+  color: var(--white);
+  padding: 1rem 2rem;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: linear-gradient(135deg, #c82333 0%, #a71e2a 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(220, 53, 69, 0.3);
+}
+
+.btn-danger:disabled {
+  background: var(--app-bg-secondary) !important;
+  border: 2px solid var(--app-border-color) !important;
+  color: var(--app-text-secondary) !important;
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.btn-danger:disabled:hover {
+  background: var(--app-bg-secondary) !important;
+  transform: none;
+  box-shadow: none;
 }
 
 @media (max-width: 768px) {

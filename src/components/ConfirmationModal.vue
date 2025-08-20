@@ -12,7 +12,7 @@
         <button @click="handleCancel" class="btn btn-secondary">
           {{ cancelText }}
         </button>
-        <button @click="handleConfirm" class="btn btn-warning">
+        <button @click="handleConfirm" class="btn" :class="danger ? 'btn-danger' : 'btn-warning'">
           {{ confirmText }}
         </button>
       </div>
@@ -26,13 +26,15 @@ interface Props {
   message?: string
   confirmText?: string
   cancelText?: string
+  danger?: boolean
 }
 
 withDefaults(defineProps<Props>(), {
   title: 'Confirmar acción',
   message: '¿Estás seguro de que deseas continuar?',
   confirmText: 'Confirmar',
-  cancelText: 'Cancelar'
+  cancelText: 'Cancelar',
+  danger: false
 })
 
 const emit = defineEmits(['confirm', 'cancel'])
@@ -185,6 +187,19 @@ const handleOverlayClick = () => {
   background: linear-gradient(135deg, rgba(59, 130, 246, 1), rgba(96, 165, 250, 1));
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+}
+
+.btn-danger {
+  background: linear-gradient(135deg, rgba(220, 53, 69, 0.9), rgba(200, 35, 51, 0.9));
+  color: white;
+  border: 1px solid rgba(220, 53, 69, 0.3);
+  box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
+}
+
+.btn-danger:hover {
+  background: linear-gradient(135deg, rgba(220, 53, 69, 1), rgba(200, 35, 51, 1));
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(220, 53, 69, 0.4);
 }
 
 /* Responsive */
