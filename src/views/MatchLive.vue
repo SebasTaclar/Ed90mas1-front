@@ -126,7 +126,7 @@
               <span class="player-name">{{ getPlayerName(selectedPlayer) }}</span>
               <span class="team-name">({{ selectedTeam === 'home' ? matchData?.homeTeam.teamName :
                 matchData?.awayTeam.teamName
-              }})</span>
+                }})</span>
             </div>
           </div>
 
@@ -760,11 +760,22 @@ const loadMatchData = async () => {
     }
 
     // Establecer el período del partido basado en el estado de la BD
-    if (match.status === 'completed') {
+    if (match.status === 'finished') {
+      matchPeriod.value = 'finished'
+    } else if (match.status === 'in_progress_1_half') {
+      matchPeriod.value = 'in_progress_1_half'
+    } else if (match.status === 'finished_1_half') {
+      matchPeriod.value = 'finished_1_half'
+    } else if (match.status === 'in_progress_2_half') {
+      matchPeriod.value = 'in_progress_2_half'
+    } else if (match.status === 'finished_2_half') {
+      matchPeriod.value = 'finished_2_half'
+    } else if (match.status === 'penalties') {
+      matchPeriod.value = 'penalties'
+    } else if (match.status === 'completed') {
       matchPeriod.value = 'finished'
     } else if (match.status === 'in_progress') {
-      // Aquí podrías tener lógica más específica basada en otros campos
-      // Por ahora, asumimos que si está en progreso, está en segundo tiempo
+      // Fallback para compatibilidad con estados genéricos antiguos
       matchPeriod.value = 'in_progress_2_half'
     } else {
       matchPeriod.value = 'not_started'

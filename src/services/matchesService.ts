@@ -10,7 +10,7 @@ export interface Match {
   scheduledDate?: string // Campo para la UI
   location?: string // Campo del backend
   venue?: string // Campo para la UI
-  status?: 'scheduled' | 'in_progress' | 'completed' | 'cancelled'
+  status?: 'not_started' | 'in_progress_1_half' | 'finished_1_half' | 'in_progress_2_half' | 'finished_2_half' | 'penalties' | 'finished' | 'scheduled' | 'in_progress' | 'completed' | 'cancelled'
   homeScore?: number
   awayScore?: number
   round?: string
