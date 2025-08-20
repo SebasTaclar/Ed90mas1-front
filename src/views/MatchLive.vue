@@ -85,7 +85,7 @@
               <span class="player-name">{{ getPlayerName(selectedPlayer) }}</span>
               <span class="team-name">({{ selectedTeam === 'home' ? matchData?.homeTeam.teamName :
                 matchData?.awayTeam.teamName
-                }})</span>
+              }})</span>
             </div>
           </div>
 
@@ -181,16 +181,16 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { matchesService } from '@/services/matchesService'
+import { matchEventsService, MatchEventType } from '@/services/matchEventsService'
 import { playerService } from '@/services/api/playerService'
 import type { Player } from '@/types/PlayerType'
-import type { Match } from '@/services/matchesService'
 
 const router = useRouter()
 const route = useRoute()
 
 // Interfaces
 interface MatchEvent {
-  id: string
+  id: string | number // String para eventos locales temporales, number para eventos guardados en BD
   type: 'goal' | 'yellow_card' | 'red_card' | 'substitution'
   minute: number
   playerId: number
@@ -198,6 +198,7 @@ interface MatchEvent {
   teamId: number
   teamName: string
   timestamp: Date
+  dbId?: number // ID en la base de datos cuando se guarda
 }
 
 interface SimpleTeamData {
@@ -323,7 +324,53 @@ const selectPlayer = (player: Player, team: 'home' | 'away') => {
   selectedTeam.value = team
 }
 
-const addEvent = (eventType: 'goal' | 'yellow_card' | 'red_card' | 'substitution') => {
+// Función para mapear tipos de evento local a tipos de BD
+const mapEventTypeToDb = (eventType: string): MatchEventType => {
+  switch (eventType) {
+    case 'goal': return MatchEventType.GOAL
+    case 'yellow_card': return MatchEventType.YELLOW_CARD
+    case 'red_card': return MatchEventType.RED_CARD
+    case 'substitution': return MatchEventType.SUBSTITUTION
+    default: return MatchEventType.GOAL
+  }
+}
+
+// Función para guardar evento en la base de datos
+const saveEventToDatabase = async (event: MatchEvent): Promise<number | null> => {
+  if (!matchData.value) return null
+
+  try {
+    const eventData = {
+      matchId: matchData.value.matchId,
+      playerId: event.playerId,
+      teamId: event.teamId,
+      eventType: mapEventTypeToDb(event.type),
+      minute: event.minute,
+      description: `${event.playerName} - ${event.teamName}`
+    }
+
+    const savedEvent = await matchEventsService.createMatchEvent(eventData)
+    return savedEvent.id
+  } catch (error) {
+    console.error('Error saving event to database:', error)
+    return null
+  }
+}
+
+// Función para eliminar evento de la base de datos
+const deleteEventFromDatabase = async (dbEventId: number): Promise<boolean> => {
+  if (!matchData.value) return false
+
+  try {
+    await matchEventsService.deleteMatchEvent(matchData.value.matchId, dbEventId)
+    return true
+  } catch (error) {
+    console.error('Error deleting event from database:', error)
+    return false
+  }
+}
+
+const addEvent = async (eventType: 'goal' | 'yellow_card' | 'red_card' | 'substitution') => {
   if (!selectedPlayer.value || !selectedTeam.value || !matchData.value) return
 
   const currentMinute = Math.floor(matchTime.value / 60)
@@ -351,6 +398,13 @@ const addEvent = (eventType: 'goal' | 'yellow_card' | 'red_card' | 'substitution
       // Primero agregar la segunda amarilla
       matchEvents.value.push(event)
 
+      // Guardar la segunda amarilla en BD
+      const yellowDbId = await saveEventToDatabase(event)
+      if (yellowDbId) {
+        event.dbId = yellowDbId
+        event.id = yellowDbId
+      }
+
       // Luego agregar automáticamente la tarjeta roja
       const redCardEvent: MatchEvent = {
         id: `${Date.now() + 1}-${Math.random()}`,
@@ -364,6 +418,13 @@ const addEvent = (eventType: 'goal' | 'yellow_card' | 'red_card' | 'substitution
       }
       matchEvents.value.push(redCardEvent)
 
+      // Guardar la tarjeta roja en BD
+      const redDbId = await saveEventToDatabase(redCardEvent)
+      if (redDbId) {
+        redCardEvent.dbId = redDbId
+        redCardEvent.id = redDbId
+      }
+
       // Limpiar selección después de agregar eventos
       selectedPlayer.value = null
       selectedTeam.value = null
@@ -371,7 +432,15 @@ const addEvent = (eventType: 'goal' | 'yellow_card' | 'red_card' | 'substitution
     }
   }
 
+  // Agregar el evento localmente
   matchEvents.value.push(event)
+
+  // Guardar en la base de datos
+  const dbEventId = await saveEventToDatabase(event)
+  if (dbEventId) {
+    event.dbId = dbEventId
+    event.id = dbEventId
+  }
 
   // Actualizar puntaje si es gol
   if (eventType === 'goal') {
@@ -387,11 +456,20 @@ const addEvent = (eventType: 'goal' | 'yellow_card' | 'red_card' | 'substitution
   selectedTeam.value = null
 }
 
-const removeEvent = (eventId: string) => {
+const removeEvent = async (eventId: string | number) => {
   const eventIndex = matchEvents.value.findIndex(e => e.id === eventId)
   if (eventIndex === -1) return
 
   const event = matchEvents.value[eventIndex]
+
+  // Si el evento tiene dbId, eliminarlo de la base de datos
+  if (event.dbId && typeof event.dbId === 'number') {
+    const deleted = await deleteEventFromDatabase(event.dbId)
+    if (!deleted) {
+      console.error('No se pudo eliminar el evento de la base de datos')
+      return // No eliminar localmente si no se pudo eliminar de la BD
+    }
+  }
 
   // Si es un gol, actualizar el puntaje
   if (event.type === 'goal') {
@@ -403,6 +481,7 @@ const removeEvent = (eventId: string) => {
     }
   }
 
+  // Eliminar el evento localmente
   matchEvents.value.splice(eventIndex, 1)
 }
 
@@ -423,6 +502,59 @@ const getEventLabel = (eventType: string): string => {
     case 'red_card': return 'Tarjeta Roja'
     case 'substitution': return 'Sustitución'
     default: return 'Evento'
+  }
+}
+
+// Función para cargar eventos existentes del partido
+const loadMatchEvents = async (matchId: number) => {
+  try {
+    const events = await matchEventsService.getMatchEvents(matchId)
+
+    // Mapear eventos de la BD al formato local
+    const localEvents: MatchEvent[] = events.map(event => ({
+      id: event.id,
+      dbId: event.id,
+      type: mapDbEventTypeToLocal(event.eventType),
+      minute: event.minute,
+      playerId: event.playerId,
+      playerName: `${event.player.firstName} ${event.player.lastName}`,
+      teamId: event.teamId,
+      teamName: event.team.name,
+      timestamp: new Date(event.createdAt)
+    }))
+
+    matchEvents.value = localEvents
+
+    // Calcular puntaje basado en eventos de goles
+    homeScore.value = localEvents.filter(e =>
+      e.type === 'goal' && e.teamId === matchData.value?.homeTeam.teamId
+    ).length
+
+    awayScore.value = localEvents.filter(e =>
+      e.type === 'goal' && e.teamId === matchData.value?.awayTeam.teamId
+    ).length
+
+  } catch (error) {
+    console.error('Error loading match events:', error)
+    matchEvents.value = []
+  }
+}
+
+// Función para mapear tipos de evento de BD a tipos locales
+const mapDbEventTypeToLocal = (dbEventType: MatchEventType): 'goal' | 'yellow_card' | 'red_card' | 'substitution' => {
+  switch (dbEventType) {
+    case MatchEventType.GOAL:
+    case MatchEventType.PENALTY_GOAL:
+    case MatchEventType.OWN_GOAL:
+      return 'goal'
+    case MatchEventType.YELLOW_CARD:
+      return 'yellow_card'
+    case MatchEventType.RED_CARD:
+      return 'red_card'
+    case MatchEventType.SUBSTITUTION:
+      return 'substitution'
+    default:
+      return 'goal'
   }
 }
 
@@ -479,6 +611,9 @@ const loadMatchData = async () => {
       attendingPlayers: match.attendingPlayers
     }
 
+    // Cargar eventos existentes del partido
+    await loadMatchEvents(matchId)
+
   } catch (error) {
     console.error('Error loading match data:', error)
     // Mostrar datos de error
@@ -527,7 +662,7 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 2rem;
-  margin-top: 1rem;
+  margin-top: 2rem;
   padding: 2rem 1.5rem 1.5rem 1.5rem;
   background: rgba(255, 255, 255, 0.1);
   border-radius: 1rem;
@@ -1062,7 +1197,7 @@ onUnmounted(() => {
     flex-direction: column;
     gap: 1rem;
     padding: 2rem 1rem 1rem 1rem;
-    margin-top: 0.5rem;
+    margin-top: 1.5rem;
   }
 
   .match-controls {
