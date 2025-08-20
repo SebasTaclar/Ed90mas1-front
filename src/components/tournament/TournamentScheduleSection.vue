@@ -30,19 +30,28 @@
       </button>
     </div>
 
-    <!-- Estadísticas rápidas -->
-    <div class="stats-row">
-      <div class="stat-item">
-        <span class="stat-number">{{ filteredMatches.length }}</span>
-        <span class="stat-label">Partidos{{ hasActiveFilters ? ' filtrados' : '' }}</span>
+    <!-- Estadísticas rápidas y acciones -->
+    <div class="stats-and-actions">
+      <div class="stats-row">
+        <div class="stat-item">
+          <span class="stat-number">{{ filteredMatches.length }}</span>
+          <span class="stat-label">Partidos{{ hasActiveFilters ? ' filtrados' : '' }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-number">{{ pendingMatches }}</span>
+          <span class="stat-label">Por jugar</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-number">{{ completedMatches }}</span>
+          <span class="stat-label">Finalizados</span>
+        </div>
       </div>
-      <div class="stat-item">
-        <span class="stat-number">{{ pendingMatches }}</span>
-        <span class="stat-label">Por jugar</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-number">{{ completedMatches }}</span>
-        <span class="stat-label">Finalizados</span>
+
+      <div class="actions-row">
+        <button @click="openCreateMatchModal" class="btn-create-match">
+          <span class="btn-icon">⚽</span>
+          <span class="btn-text">Agregar Partido Eliminatorio</span>
+        </button>
       </div>
     </div>
 
@@ -61,6 +70,7 @@
         <div class="table-header">
           <div class="col-date">Fecha</div>
           <div class="col-teams">Equipos</div>
+          <div class="col-round">Fase</div>
           <div class="col-location">Lugar</div>
           <div class="col-status">Estado</div>
           <div class="col-actions">Acciones</div>
@@ -103,6 +113,15 @@
             </div>
           </div>
 
+          <div class="col-round">
+            <div class="round-info">
+              <span v-if="match.round" class="round-badge" :class="getRoundClass(match.round)">
+                {{ match.round }}
+              </span>
+              <span v-else class="round-default">Fase de Grupos</span>
+            </div>
+          </div>
+
           <div class="col-location">
             <div v-if="isEditing(match.id!, 'location')" class="edit-location-container">
               <div class="edit-inputs">
@@ -138,11 +157,25 @@
                 :disabled="editingMatch !== null" title="Editar lugar">
                 📍
               </button>
+              <!-- Botón eliminar solo para partidos de fase eliminatoria (NO Group Stage) -->
+              <button v-if="match.round && match.round.trim() !== '' && match.round !== 'Group Stage'"
+                @click="confirmDeleteMatch(match)" class="edit-btn delete-btn"
+                :disabled="editingMatch !== null || isDeletingMatch" title="Eliminar partido eliminatorio">
+                🗑️
+              </button>
             </div>
           </div>
         </div>
       </div>
     </div>
+
+    <!-- Modal para crear partido eliminatorio -->
+    <CreateMatchPopup :is-visible="showCreateMatchModal" :available-teams="tournamentTeams"
+      @close="closeCreateMatchModal" @submit="handleCreateMatch" />
+
+    <!-- Modal de confirmación para eliminar -->
+    <ConfirmationModal v-if="showDeleteConfirm" :title="deleteModalTitle" :message="deleteModalMessage"
+      @confirm="handleDeleteConfirm" @cancel="cancelDelete" />
   </div>
 </template>
 
@@ -150,10 +183,18 @@
 import { computed, ref } from 'vue'
 import type { Match } from '@/services/matchesService'
 import { matchesService } from '@/services/matchesService'
+import CreateMatchPopup from '@/components/CreateMatchPopup.vue'
+import ConfirmationModal from '@/components/ConfirmationModal.vue'
 
 interface Props {
   matches: Match[]
   matchesLoading: boolean
+  tournamentId: number
+  tournamentTeams: Array<{
+    id: number
+    name: string
+    logoPath?: string | null
+  }>
 }
 
 const props = defineProps<Props>()
@@ -174,9 +215,19 @@ const editValues = ref({
   location: ''
 })
 const isUpdating = ref(false)
+const isDeletingMatch = ref(false)
 
 // Estado de resaltado
 const highlightedMatch = ref<number | null>(null)
+
+// Estado del modal de creación de partidos
+const showCreateMatchModal = ref(false)
+
+// Estado del modal de confirmación para eliminar
+const showDeleteConfirm = ref(false)
+const deleteModalTitle = ref('Confirmar Eliminación')
+const deleteModalMessage = ref('¿Está seguro de que desea eliminar este elemento?')
+const matchToDelete = ref<number | null>(null)
 
 // Computed properties
 const availableTeams = computed(() => {
@@ -249,6 +300,11 @@ const completedMatches = computed(() => {
   return filteredMatches.value.filter(match =>
     match.status === 'completed'
   ).length
+})
+
+// Computed properties para el modal
+const availableTeamsForSelect = computed(() => {
+  return props.tournamentTeams || []
 })
 
 // Funciones
@@ -342,9 +398,73 @@ const getRowClass = (match: Match) => {
   return classes.join(' ')
 }
 
+const getRoundClass = (round: string) => {
+  const roundLower = round.toLowerCase()
+
+  if (roundLower.includes('final') && !roundLower.includes('semi') && !roundLower.includes('cuart') && !roundLower.includes('octav') && !roundLower.includes('dieciseis')) {
+    return 'round-final'
+  } else if (roundLower.includes('semifinal')) {
+    return 'round-semifinal'
+  } else if (roundLower.includes('cuart')) {
+    return 'round-quarterfinal'
+  } else if (roundLower.includes('octav')) {
+    return 'round-octavos'
+  } else if (roundLower.includes('dieciseis')) {
+    return 'round-dieciseisavos'
+  } else {
+    return 'round-default'
+  }
+}
+
 const handleImageError = (event: Event) => {
   const img = event.target as HTMLImageElement
   img.src = '/images/logo.png'
+}
+
+// Funciones del modal de creación
+const openCreateMatchModal = () => {
+  showCreateMatchModal.value = true
+}
+
+const closeCreateMatchModal = () => {
+  showCreateMatchModal.value = false
+}
+
+interface CreateMatchForm {
+  phase: string
+  homeTeam: string
+  awayTeam: string
+  date: string
+  time: string
+  location: string
+}
+
+const handleCreateMatch = async (formData: CreateMatchForm) => {
+  try {
+    // Crear objeto Date a partir de la fecha y hora
+    const matchDateTime = new Date(`${formData.date}T${formData.time}:00`)
+
+    // Generar número de partido único (podría basarse en la cantidad actual + 1)
+    const matchNumber = props.matches.length + 1
+
+    const matchData = {
+      tournamentId: props.tournamentId,
+      homeTeamId: parseInt(formData.homeTeam),
+      awayTeamId: parseInt(formData.awayTeam),
+      matchDate: matchDateTime,
+      location: formData.location || undefined,
+      round: formData.phase,
+      matchNumber: matchNumber
+    }
+
+    await matchesService.createMatch(matchData)
+    emit('match-updated')
+    closeCreateMatchModal()
+
+  } catch (error) {
+    console.error('Error creating match:', error)
+    alert('Error al crear el partido: ' + (error instanceof Error ? error.message : 'Error desconocido'))
+  }
 }
 
 // Funciones de edición
@@ -429,6 +549,44 @@ const saveChanges = async () => {
 
 const isEditing = (matchId: number, field: 'date' | 'location') => {
   return editingMatch.value === matchId && editingField.value === field
+}
+
+// Funciones de eliminación
+const confirmDeleteMatch = (match: Match) => {
+  const teamNames = `${match.homeTeam?.name || 'TBD'} vs ${match.awayTeam?.name || 'TBD'}`
+
+  deleteModalTitle.value = `Eliminar Partido - ${match.round || 'Fase Eliminatoria'}`
+  deleteModalMessage.value = `¿Está seguro de que desea eliminar este partido?\n\n${teamNames}\n\nEsta acción no se puede deshacer.`
+  matchToDelete.value = match.id!
+  showDeleteConfirm.value = true
+}
+
+const handleDeleteConfirm = async () => {
+  if (matchToDelete.value) {
+    await deleteMatch(matchToDelete.value)
+  }
+  showDeleteConfirm.value = false
+  matchToDelete.value = null
+}
+
+const cancelDelete = () => {
+  showDeleteConfirm.value = false
+  matchToDelete.value = null
+}
+
+const deleteMatch = async (matchId: number) => {
+  try {
+    isDeletingMatch.value = true
+
+    await matchesService.deleteMatch(matchId)
+
+    emit('match-updated')
+  } catch (error) {
+    console.error('Error deleting match:', error)
+    alert('Error al eliminar el partido: ' + (error instanceof Error ? error.message : 'Error desconocido'))
+  } finally {
+    isDeletingMatch.value = false
+  }
 }
 </script>
 
@@ -578,11 +736,17 @@ const isEditing = (matchId: number, field: 'date' | 'location') => {
   box-shadow: var(--shadow-medium);
 }
 
-/* Estadísticas */
+/* Estadísticas y acciones */
+.stats-and-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
 .stats-row {
   display: flex;
   gap: 1rem;
-  margin-bottom: 2rem;
   justify-content: center;
 }
 
@@ -607,6 +771,40 @@ const isEditing = (matchId: number, field: 'date' | 'location') => {
   margin-top: 0.25rem;
 }
 
+.actions-row {
+  display: flex;
+  justify-content: center;
+}
+
+.btn-create-match {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: linear-gradient(135deg, var(--primary-blue) 0%, var(--tertiary-blue) 100%);
+  color: var(--white);
+  border: none;
+  border-radius: var(--border-radius-md);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  box-shadow: var(--shadow-light);
+}
+
+.btn-create-match:hover {
+  background: linear-gradient(135deg, var(--tertiary-blue) 0%, var(--secondary-blue) 100%);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-medium);
+}
+
+.btn-icon {
+  font-size: 1.1rem;
+}
+
+.btn-text {
+  font-size: 0.95rem;
+}
+
 /* Tabla */
 .matches-table-container {
   background: var(--app-bg-primary);
@@ -621,7 +819,7 @@ const isEditing = (matchId: number, field: 'date' | 'location') => {
 
 .table-header {
   display: grid;
-  grid-template-columns: 200px 1fr 160px 140px 120px;
+  grid-template-columns: 250px 1fr 180px 200px 180px 140px;
   background: var(--primary-blue);
   color: var(--white);
   font-weight: 600;
@@ -631,7 +829,7 @@ const isEditing = (matchId: number, field: 'date' | 'location') => {
 
 .table-row {
   display: grid;
-  grid-template-columns: 200px 1fr 160px 140px 120px;
+  grid-template-columns: 250px 1fr 180px 200px 180px 140px;
   padding: 1rem;
   gap: 1rem;
   border-bottom: 1px solid var(--app-border-color);
@@ -682,6 +880,7 @@ const isEditing = (matchId: number, field: 'date' | 'location') => {
 /* Columnas */
 .col-date,
 .col-teams,
+.col-round,
 .col-location,
 .col-status,
 .col-actions {
@@ -830,6 +1029,17 @@ const isEditing = (matchId: number, field: 'date' | 'location') => {
   border-color: #10b981;
 }
 
+.edit-btn.delete-btn {
+  border-color: rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.edit-btn.delete-btn:hover:not(:disabled) {
+  background: #ef4444;
+  border-color: #ef4444;
+  color: white;
+}
+
 .date-info {
   display: flex;
   flex-direction: column;
@@ -883,6 +1093,66 @@ const isEditing = (matchId: number, field: 'date' | 'location') => {
   font-weight: 700;
   color: var(--app-text-secondary);
   font-size: 0.8rem;
+}
+
+/* Columna de fase/ronda */
+.col-round {
+  justify-content: center;
+}
+
+.round-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.round-badge {
+  display: inline-block;
+  padding: 0.4rem 0.8rem;
+  border-radius: var(--border-radius-full);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-align: center;
+  white-space: nowrap;
+  min-width: 80px;
+}
+
+.round-final {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  color: var(--white);
+  box-shadow: 0 2px 4px rgba(245, 158, 11, 0.3);
+}
+
+.round-semifinal {
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+  color: var(--white);
+  box-shadow: 0 2px 4px rgba(139, 92, 246, 0.3);
+}
+
+.round-quarterfinal {
+  background: linear-gradient(135deg, #06b6d4, #0891b2);
+  color: var(--white);
+  box-shadow: 0 2px 4px rgba(6, 182, 212, 0.3);
+}
+
+.round-octavos {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: var(--white);
+  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);
+}
+
+.round-dieciseisavos {
+  background: linear-gradient(135deg, #f97316, #ea580c);
+  color: var(--white);
+  box-shadow: 0 2px 4px rgba(249, 115, 22, 0.3);
+}
+
+.round-default {
+  background: var(--app-bg-secondary);
+  color: var(--app-text-secondary);
+  border: 1px solid var(--app-border-color);
+  font-size: 0.7rem;
 }
 
 .location-info {
@@ -968,7 +1238,7 @@ const isEditing = (matchId: number, field: 'date' | 'location') => {
 
   .table-header,
   .table-row {
-    grid-template-columns: 150px 1fr 140px 100px 100px;
+    grid-template-columns: 180px 1fr 150px 160px 130px 120px;
   }
 
   .team-name {
@@ -998,6 +1268,28 @@ const isEditing = (matchId: number, field: 'date' | 'location') => {
 
   .stats-row {
     flex-wrap: wrap;
+  }
+
+  .actions-row {
+    margin-top: 1rem;
+  }
+
+  .btn-create-match {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .modal {
+    width: 95%;
+    margin: 1rem;
+  }
+
+  .modal-body {
+    padding: 1.5rem;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
   }
 
   .table-header,

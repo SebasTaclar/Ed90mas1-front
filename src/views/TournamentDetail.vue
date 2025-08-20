@@ -12,7 +12,8 @@
         <div class="container">
           <!-- Sección: Cronograma -->
           <TournamentScheduleSection v-if="activeSection === 'cronograma'" :matches="tournamentMatches"
-            :matches-loading="matchesLoading" @match-updated="loadTournamentMatchesData" />
+            :matches-loading="matchesLoading" :tournament-id="selectedTournament?.id || 0"
+            :tournament-teams="tournamentTeams" @match-updated="loadTournamentMatchesData" />
 
           <!-- Sección: Resultados -->
           <TournamentResultsSection v-else-if="activeSection === 'resultados'" />

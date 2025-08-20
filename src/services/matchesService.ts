@@ -46,8 +46,10 @@ export interface CreateMatchRequest {
   groupId?: number
   homeTeamId: number
   awayTeamId: number
-  scheduledDate: string
-  venue?: string
+  matchDate: Date
+  location?: string
+  round?: string
+  matchNumber: number
 }
 
 export interface MatchesResponse {
