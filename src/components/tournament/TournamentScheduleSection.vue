@@ -63,11 +63,25 @@
           <div class="col-teams">Equipos</div>
           <div class="col-location">Lugar</div>
           <div class="col-status">Estado</div>
+          <div class="col-actions">Acciones</div>
         </div>
 
-        <div v-for="match in filteredMatches" :key="match.id" class="table-row" :class="getRowClass(match.status)">
+        <div v-for="match in filteredMatches" :key="match.id" class="table-row" :class="getRowClass(match)">
           <div class="col-date">
-            <div class="date-info">
+            <div v-if="isEditing(match.id!, 'date')" class="edit-date-container">
+              <div class="edit-inputs">
+                <input v-model="editValues.date" type="date" class="edit-input date-input" :disabled="isUpdating" />
+                <input v-model="editValues.time" type="time" class="edit-input time-input" :disabled="isUpdating" />
+              </div>
+              <div class="edit-actions">
+                <button @click="saveChanges" class="save-btn" :disabled="isUpdating">
+                  <span v-if="isUpdating">⏳</span>
+                  <span v-else>✓</span>
+                </button>
+                <button @click="cancelEditing" class="cancel-btn" :disabled="isUpdating">✕</button>
+              </div>
+            </div>
+            <div v-else class="date-info">
               <span class="date">{{ formatDate(match.matchDate || match.scheduledDate) }}</span>
               <span class="time">{{ formatTime(match.matchDate || match.scheduledDate) }}</span>
             </div>
@@ -90,7 +104,20 @@
           </div>
 
           <div class="col-location">
-            <div class="location-info">
+            <div v-if="isEditing(match.id!, 'location')" class="edit-location-container">
+              <div class="edit-inputs">
+                <input v-model="editValues.location" type="text" placeholder="Ingrese el lugar"
+                  class="edit-input location-input" :disabled="isUpdating" />
+              </div>
+              <div class="edit-actions">
+                <button @click="saveChanges" class="save-btn" :disabled="isUpdating">
+                  <span v-if="isUpdating">⏳</span>
+                  <span v-else>✓</span>
+                </button>
+                <button @click="cancelEditing" class="cancel-btn" :disabled="isUpdating">✕</button>
+              </div>
+            </div>
+            <div v-else class="location-info">
               <span class="location-text">{{ match.location || 'Por definir' }}</span>
             </div>
           </div>
@@ -99,6 +126,19 @@
             <span class="status-badge" :class="getStatusClass(match.status)">
               {{ getStatusText(match.status) }}
             </span>
+          </div>
+
+          <div class="col-actions">
+            <div class="action-buttons">
+              <button @click="startEditing(match.id!, 'date')" class="edit-btn date-edit"
+                :disabled="editingMatch !== null" title="Editar fecha y hora">
+                📅
+              </button>
+              <button @click="startEditing(match.id!, 'location')" class="edit-btn location-edit"
+                :disabled="editingMatch !== null" title="Editar lugar">
+                📍
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -109,6 +149,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import type { Match } from '@/services/matchesService'
+import { matchesService } from '@/services/matchesService'
 
 interface Props {
   matches: Match[]
@@ -116,10 +157,26 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+const emit = defineEmits<{
+  'match-updated': []
+}>()
 
 // Estado de filtros
 const selectedTeam = ref('')
 const selectedDate = ref('')
+
+// Estado de edición
+const editingMatch = ref<number | null>(null)
+const editingField = ref<'date' | 'location' | null>(null)
+const editValues = ref({
+  date: '',
+  time: '',
+  location: ''
+})
+const isUpdating = ref(false)
+
+// Estado de resaltado
+const highlightedMatch = ref<number | null>(null)
 
 // Computed properties
 const availableTeams = computed(() => {
@@ -264,20 +321,114 @@ const getStatusClass = (status?: string) => {
   }
 }
 
-const getRowClass = (status?: string) => {
-  switch (status) {
+const getRowClass = (match: Match) => {
+  const classes: string[] = []
+
+  // Clases basadas en el estado
+  switch (match.status) {
     case 'in_progress':
-      return 'row-live'
+      classes.push('row-live')
+      break
     case 'completed':
-      return 'row-completed'
-    default:
-      return ''
+      classes.push('row-completed')
+      break
   }
+
+  // Clase de resaltado
+  if (highlightedMatch.value === match.id) {
+    classes.push('row-highlighted')
+  }
+
+  return classes.join(' ')
 }
 
 const handleImageError = (event: Event) => {
   const img = event.target as HTMLImageElement
   img.src = '/images/logo.png'
+}
+
+// Funciones de edición
+const startEditing = (matchId: number, field: 'date' | 'location') => {
+  const match = props.matches.find(m => m.id === matchId)
+  if (!match) return
+
+  editingMatch.value = matchId
+  editingField.value = field
+
+  if (field === 'date') {
+    const matchDate = new Date(match.matchDate || match.scheduledDate || '')
+
+    // Extraer fecha local sin conversión UTC para evitar desfase de día
+    const year = matchDate.getFullYear()
+    const month = String(matchDate.getMonth() + 1).padStart(2, '0')
+    const day = String(matchDate.getDate()).padStart(2, '0')
+    const hours = String(matchDate.getHours()).padStart(2, '0')
+    const minutes = String(matchDate.getMinutes()).padStart(2, '0')
+
+    editValues.value.date = `${year}-${month}-${day}`
+    editValues.value.time = `${hours}:${minutes}`
+  } else if (field === 'location') {
+    editValues.value.location = match.location || ''
+  }
+}
+
+const cancelEditing = () => {
+  editingMatch.value = null
+  editingField.value = null
+  editValues.value = { date: '', time: '', location: '' }
+}
+
+const saveChanges = async () => {
+  if (!editingMatch.value || !editingField.value) return
+
+  const match = props.matches.find(m => m.id === editingMatch.value)
+  if (!match?.id) {
+    alert('Error: No se pudo identificar el partido a actualizar')
+    return
+  }
+
+  // Guardar el ID del match para resaltarlo después
+  const matchIdToHighlight = match.id
+
+  try {
+    isUpdating.value = true
+
+    const updateData: Partial<Match> = {}
+
+    if (editingField.value === 'date') {
+      // Combinar fecha y hora para crear el datetime completo
+      const dateTime = `${editValues.value.date}T${editValues.value.time || '00:00'}:00`
+      updateData.matchDate = dateTime
+    } else if (editingField.value === 'location') {
+      updateData.location = editValues.value.location
+    }
+
+    await matchesService.updateMatch(match.id, updateData)
+
+    // Emitir evento para recargar los datos
+    emit('match-updated')
+
+    cancelEditing()
+
+    // Activar resaltado después de un pequeño delay para permitir que se recarguen los datos
+    setTimeout(() => {
+      highlightedMatch.value = matchIdToHighlight
+      // Remover resaltado después de 2 segundos
+      setTimeout(() => {
+        highlightedMatch.value = null
+      }, 2000)
+    }, 100)
+
+  } catch (error) {
+    console.error('Error updating match:', error)
+    alert('Error al actualizar el partido: ' + (error instanceof Error ? error.message : 'Error desconocido'))
+  } finally {
+    isUpdating.value = false
+  }
+}
+
+const isEditing = (matchId: number, field: 'date' | 'location') => {
+  return editingMatch.value === matchId && editingField.value === field
 }
 </script>
 
@@ -470,7 +621,7 @@ const handleImageError = (event: Event) => {
 
 .table-header {
   display: grid;
-  grid-template-columns: 200px 1fr 160px 140px;
+  grid-template-columns: 200px 1fr 160px 140px 120px;
   background: var(--primary-blue);
   color: var(--white);
   font-weight: 600;
@@ -480,7 +631,7 @@ const handleImageError = (event: Event) => {
 
 .table-row {
   display: grid;
-  grid-template-columns: 200px 1fr 160px 140px;
+  grid-template-columns: 200px 1fr 160px 140px 120px;
   padding: 1rem;
   gap: 1rem;
   border-bottom: 1px solid var(--app-border-color);
@@ -504,13 +655,179 @@ const handleImageError = (event: Event) => {
   background: rgba(16, 185, 129, 0.05);
 }
 
+.row-highlighted {
+  background: rgba(59, 130, 246, 0.15) !important;
+  border-left: 4px solid #3b82f6 !important;
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.2) !important;
+  animation: highlightPulse 2s ease-in-out;
+}
+
+@keyframes highlightPulse {
+  0% {
+    background: rgba(59, 130, 246, 0.25);
+    box-shadow: 0 0 25px rgba(59, 130, 246, 0.3);
+  }
+
+  50% {
+    background: rgba(59, 130, 246, 0.15);
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.2);
+  }
+
+  100% {
+    background: rgba(59, 130, 246, 0.15);
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
+  }
+}
+
 /* Columnas */
 .col-date,
 .col-teams,
 .col-location,
-.col-status {
+.col-status,
+.col-actions {
   display: flex;
   align-items: center;
+}
+
+/* Elementos de edición */
+.edit-date-container,
+.edit-location-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.edit-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.edit-input {
+  padding: 0.4rem;
+  border: 2px solid var(--primary-blue);
+  border-radius: var(--border-radius-sm);
+  font-size: 0.8rem;
+  background: var(--app-bg-primary);
+  color: var(--app-text-primary);
+  transition: border-color var(--transition-normal);
+}
+
+.edit-input:focus {
+  outline: none;
+  border-color: var(--tertiary-blue);
+  box-shadow: 0 0 0 2px rgba(60, 154, 240, 0.2);
+}
+
+.edit-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.date-input,
+.time-input {
+  width: 100%;
+}
+
+.location-input {
+  width: 100%;
+  min-width: 140px;
+}
+
+.edit-actions {
+  display: flex;
+  gap: 0.25rem;
+  justify-content: center;
+}
+
+.save-btn,
+.cancel-btn {
+  padding: 0.3rem;
+  border: none;
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  font-size: 0.8rem;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-normal);
+}
+
+.save-btn {
+  background: #10b981;
+  color: white;
+}
+
+.save-btn:hover:not(:disabled) {
+  background: #059669;
+  transform: scale(1.05);
+}
+
+.save-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.cancel-btn {
+  background: #ef4444;
+  color: white;
+}
+
+.cancel-btn:hover:not(:disabled) {
+  background: #dc2626;
+  transform: scale(1.05);
+}
+
+.cancel-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Botones de acción */
+.action-buttons {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.edit-btn {
+  padding: 0.4rem;
+  background: var(--app-bg-secondary);
+  border: 2px solid var(--app-border-color);
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  font-size: 1rem;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-normal);
+}
+
+.edit-btn:hover:not(:disabled) {
+  background: var(--primary-blue);
+  border-color: var(--primary-blue);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-light);
+}
+
+.edit-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.edit-btn.date-edit:hover:not(:disabled) {
+  background: #f59e0b;
+  border-color: #f59e0b;
+}
+
+.edit-btn.location-edit:hover:not(:disabled) {
+  background: #10b981;
+  border-color: #10b981;
 }
 
 .date-info {
@@ -651,11 +968,17 @@ const handleImageError = (event: Event) => {
 
   .table-header,
   .table-row {
-    grid-template-columns: 150px 1fr 140px 120px;
+    grid-template-columns: 150px 1fr 140px 100px 100px;
   }
 
   .team-name {
     font-size: 0.8rem;
+  }
+
+  .edit-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 0.9rem;
   }
 }
 
@@ -692,6 +1015,26 @@ const handleImageError = (event: Event) => {
     flex-direction: column;
     gap: 1rem;
     padding: 1.5rem 1rem;
+  }
+
+  .col-actions {
+    justify-content: center;
+    border-top: 1px solid var(--app-border-color);
+    padding-top: 1rem;
+  }
+
+  .edit-date-container,
+  .edit-location-container {
+    align-items: center;
+  }
+
+  .edit-inputs {
+    align-items: center;
+    width: 100%;
+  }
+
+  .edit-input {
+    max-width: 200px;
   }
 
   .teams-info {

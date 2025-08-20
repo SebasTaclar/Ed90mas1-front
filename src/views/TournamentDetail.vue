@@ -12,7 +12,7 @@
         <div class="container">
           <!-- Sección: Cronograma -->
           <TournamentScheduleSection v-if="activeSection === 'cronograma'" :matches="tournamentMatches"
-            :matches-loading="matchesLoading" />
+            :matches-loading="matchesLoading" @match-updated="loadTournamentMatchesData" />
 
           <!-- Sección: Resultados -->
           <TournamentResultsSection v-else-if="activeSection === 'resultados'" />
