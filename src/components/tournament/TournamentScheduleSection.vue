@@ -145,32 +145,6 @@ const availableDates = computed(() => {
   return Array.from(dates).sort()
 })
 
-const minDate = computed(() => {
-  if (props.matches.length === 0) return ''
-  const dates = props.matches
-    .map(match => match.matchDate || match.scheduledDate)
-    .filter((date): date is string => Boolean(date))
-    .map(date => {
-      const d = new Date(date)
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-    })
-    .sort()
-  return dates[0] || ''
-})
-
-const maxDate = computed(() => {
-  if (props.matches.length === 0) return ''
-  const dates = props.matches
-    .map(match => match.matchDate || match.scheduledDate)
-    .filter((date): date is string => Boolean(date))
-    .map(date => {
-      const d = new Date(date)
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-    })
-    .sort()
-  return dates[dates.length - 1] || ''
-})
-
 const filteredMatches = computed(() => {
   let filtered = [...props.matches]
 
