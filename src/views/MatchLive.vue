@@ -85,7 +85,7 @@
               <span class="player-name">{{ getPlayerName(selectedPlayer) }}</span>
               <span class="team-name">({{ selectedTeam === 'home' ? matchData?.homeTeam.teamName :
                 matchData?.awayTeam.teamName
-              }})</span>
+                }})</span>
             </div>
           </div>
 
@@ -509,6 +509,13 @@ const getEventLabel = (eventType: string): string => {
 const loadMatchEvents = async (matchId: number) => {
   try {
     const events = await matchEventsService.getMatchEvents(matchId)
+
+    // Verificar que events sea un array
+    if (!Array.isArray(events)) {
+      console.warn('Match events response is not an array:', events)
+      matchEvents.value = []
+      return
+    }
 
     // Mapear eventos de la BD al formato local
     const localEvents: MatchEvent[] = events.map(event => ({
