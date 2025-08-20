@@ -126,7 +126,7 @@
               <span class="player-name">{{ getPlayerName(selectedPlayer) }}</span>
               <span class="team-name">({{ selectedTeam === 'home' ? matchData?.homeTeam.teamName :
                 matchData?.awayTeam.teamName
-                }})</span>
+              }})</span>
             </div>
           </div>
 
@@ -377,49 +377,49 @@ const updateMatchStatus = async (status: string, period: string) => {
 }
 
 const startFirstHalf = async () => {
-  const success = await updateMatchStatus('in_progress', 'in_progress_1_half')
+  const success = await updateMatchStatus('in_progress_1_half', 'in_progress_1_half')
   if (success) {
     matchPeriod.value = 'in_progress_1_half'
   }
 }
 
 const endFirstHalf = async () => {
-  const success = await updateMatchStatus('in_progress', 'finished_1_half')
+  const success = await updateMatchStatus('finished_1_half', 'finished_1_half')
   if (success) {
     matchPeriod.value = 'finished_1_half'
   }
 }
 
 const startSecondHalf = async () => {
-  const success = await updateMatchStatus('in_progress', 'in_progress_2_half')
+  const success = await updateMatchStatus('in_progress_2_half', 'in_progress_2_half')
   if (success) {
     matchPeriod.value = 'in_progress_2_half'
   }
 }
 
 const endSecondHalf = async () => {
-  const success = await updateMatchStatus('in_progress', 'finished_2_half')
+  const success = await updateMatchStatus('finished_2_half', 'finished_2_half')
   if (success) {
     matchPeriod.value = 'finished_2_half'
   }
 }
 
 const startPenalties = async () => {
-  const success = await updateMatchStatus('in_progress', 'penalties')
+  const success = await updateMatchStatus('penalties', 'penalties')
   if (success) {
     matchPeriod.value = 'penalties'
   }
 }
 
 const finishMatch = async () => {
-  const success = await updateMatchStatus('completed', 'finished')
+  const success = await updateMatchStatus('finished', 'finished')
   if (success) {
     matchPeriod.value = 'finished'
   }
 }
 
 const confirmRestartMatch = async () => {
-  const success = await updateMatchStatus('scheduled', 'not_started')
+  const success = await updateMatchStatus('not_started', 'not_started')
   if (success) {
     // Limpiar todos los eventos del partido
     matchEvents.value = []
