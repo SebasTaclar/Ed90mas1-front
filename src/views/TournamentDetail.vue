@@ -83,106 +83,8 @@
       <!-- Contenido dinámico según la sección -->
       <section class="content-section">
         <div class="container">
-          <!-- Sección: Inicio -->
-          <div v-if="activeSection === 'inicio'" class="section-content">
-            <div class="inicio-layout">
-              <!-- Sección Acerca de - Centrada -->
-              <div class="about-section">
-                <div class="section-header-centered">
-                  <h2>📋 Acerca del Torneo</h2>
-                  <p class="section-description">Información general y detalles del torneo</p>
-                </div>
-
-                <div class="about-content-stacked">
-                  <div class="about-card-main">
-                    <div class="about-header">
-                      <span class="about-icon">⚽</span>
-                      <h3>F7 - Rama masculina</h3>
-                    </div>
-                    <div class="about-details">
-                      <div class="detail-item">
-                        <span class="detail-icon">📅</span>
-                        <div class="detail-content">
-                          <span class="detail-label">Duración</span>
-                          <span class="detail-value">{{ formatDateRange(selectedTournament?.startDate,
-                            selectedTournament?.endDate) }}</span>
-                        </div>
-                      </div>
-                      <div class="detail-item">
-                        <span class="detail-icon">👥</span>
-                        <div class="detail-content">
-                          <span class="detail-label">Equipos participantes</span>
-                          <span class="detail-value">{{ selectedTournament?.maxTeams || 16 }} equipos</span>
-                        </div>
-                      </div>
-                      <div class="detail-item">
-                        <span class="detail-icon">⏱️</span>
-                        <div class="detail-content">
-                          <span class="detail-label">Estado actual</span>
-                          <span class="detail-value">{{ getTournamentPhase(selectedTournament) }}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="contact-card">
-                    <div class="contact-header">
-                      <span class="contact-icon">📞</span>
-                      <h3>Contacto</h3>
-                    </div>
-                    <div class="contact-list">
-                      <div class="contact-item">
-                        <span class="contact-phone">� +1 7635767660</span>
-                      </div>
-                      <div class="contact-item">
-                        <span class="contact-phone">� +502464521</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Sección Equipos - Centrada -->
-              <div class="teams-section">
-                <div class="section-header-centered">
-                  <h2>👥 Equipos Participantes</h2>
-                  <p class="section-description">Todos los equipos registrados en el torneo</p>
-                </div>
-
-                <div v-if="loading" class="loading-state-centered">
-                  <div class="spinner"></div>
-                  <p>Cargando equipos...</p>
-                </div>
-
-                <div v-else-if="error" class="error-state-centered">
-                  <span>⚠️</span>
-                  <p>{{ error }}</p>
-                </div>
-
-                <div v-else class="teams-grid-centered">
-                  <div v-for="team in tournamentTeams" :key="team.id" class="team-card-modern">
-                    <div class="team-logo-modern">
-                      <img :src="team.logoPath ?? '/images/logo.png'" :alt="team.name" @error="handleTeamImageError">
-                    </div>
-                    <h3 class="team-name-modern">{{ team.name }}</h3>
-                    <div class="team-stats">
-                      <div class="stat-mini">
-                        <span class="stat-label">PJ</span>
-                        <span class="stat-value">3</span>
-                      </div>
-                      <div class="stat-mini">
-                        <span class="stat-label">PTS</span>
-                        <span class="stat-value">6</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
           <!-- Sección: Cronograma -->
-          <div v-else-if="activeSection === 'cronograma'" class="section-content">
+          <div v-if="activeSection === 'cronograma'" class="section-content">
             <div class="section-header">
               <h2>📅 Cronograma</h2>
               <p class="section-description">Calendario completo de partidos programados</p>
@@ -456,12 +358,12 @@ import type { Match } from '@/services/matchesService'
 
 const route = useRoute()
 const router = useRouter()
-const { tournaments, loading, error, loadTournaments } = useTournaments()
+const { tournaments, loadTournaments } = useTournaments()
 const { teams, loadTeams } = useTeams()
 const { loadTournamentMatches } = useFixtures()
 
 // Estado reactivo
-const activeSection = ref('inicio')
+const activeSection = ref('cronograma')
 const tournamentTeams = ref<Team[]>([])
 const selectedTournament = ref<Tournament | null>(null)
 const tournamentMatches = ref<Match[]>([]) // Matches reales del torneo
@@ -471,7 +373,6 @@ const isNavScrollAtEnd = ref(false)
 
 // Secciones de navegación
 const navigationSections = [
-  { id: 'inicio', label: 'Inicio', icon: '🏠' },
   { id: 'cronograma', label: 'Cronograma', icon: '📅' },
   { id: 'resultados', label: 'Resultados', icon: '⚽' },
   { id: 'clasificacion', label: 'Clasificación', icon: '🏆' },
@@ -487,7 +388,6 @@ const setActiveSection = (sectionId: string) => {
 // Función para obtener descripción de navegación
 const getNavigationDescription = (sectionId: string): string => {
   const descriptions: { [key: string]: string } = {
-    'inicio': 'Información general y equipos',
     'cronograma': 'Calendario de partidos',
     'resultados': 'Marcadores y estadísticas',
     'clasificacion': 'Tabla de posiciones',
@@ -1962,6 +1862,190 @@ onMounted(async () => {
   box-shadow: 0 4px 15px rgba(0, 123, 255, 0.1);
 }
 
+/* Sección Grupos */
+.groups-section {
+  width: 100%;
+  margin-bottom: 4rem;
+}
+
+.groups-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+.group-card {
+  background: white;
+  border-radius: 20px;
+  padding: 2rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e9ecef;
+  transition: all 0.3s ease;
+}
+
+.group-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+}
+
+.group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #e9ecef;
+}
+
+.group-header h3 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #2c3e50;
+  margin: 0;
+}
+
+.group-badge {
+  background: linear-gradient(135deg, #3498db, #2980b9);
+  color: white;
+  padding: 0.6rem 1.2rem;
+  border-radius: 25px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  box-shadow: 0 4px 10px rgba(52, 152, 219, 0.3);
+}
+
+.group-teams {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.team-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border-radius: 12px;
+  background: #f8f9fa;
+  transition: all 0.3s ease;
+  border: 1px solid #e9ecef;
+}
+
+.team-item:hover {
+  background: #e3f2fd;
+  border-color: #2196f3;
+  transform: translateX(5px);
+}
+
+.team-logo {
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  border: 2px solid #e9ecef;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.team-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.team-logo-placeholder {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #6c757d;
+}
+
+.team-name {
+  font-weight: 600;
+  color: #2c3e50;
+  font-size: 1rem;
+}
+
+.empty-group {
+  text-align: center;
+  padding: 2rem;
+  color: #6c757d;
+  background: #f8f9fa;
+  border-radius: 12px;
+  border: 2px dashed #dee2e6;
+}
+
+.empty-group i {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
+.no-groups {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: #6c757d;
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+.no-groups i {
+  font-size: 3rem;
+  margin-bottom: 1.5rem;
+  opacity: 0.3;
+  color: #3498db;
+}
+
+.no-groups h3 {
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+  color: #495057;
+}
+
+/* Modo oscuro para grupos */
+[data-theme="dark"] .group-card {
+  background: #2c3e50;
+  border-color: #4a5a6b;
+}
+
+[data-theme="dark"] .group-header h3 {
+  color: #ecf0f1;
+}
+
+[data-theme="dark"] .team-item {
+  background: #34495e;
+  border-color: #4a5a6b;
+}
+
+[data-theme="dark"] .team-item:hover {
+  background: #3d566e;
+  border-color: #5dade2;
+}
+
+[data-theme="dark"] .team-name {
+  color: #ecf0f1;
+}
+
+[data-theme="dark"] .empty-group {
+  background: #34495e;
+  border-color: #4a5a6b;
+  color: #bdc3c7;
+}
+
+[data-theme="dark"] .no-groups {
+  background: #2c3e50;
+  border-color: #4a5a6b;
+  color: #bdc3c7;
+}
+
+[data-theme="dark"] .no-groups h3 {
+  color: #ecf0f1;
+}
+
 /* Sección Equipos */
 .teams-section {
   width: 100%;
@@ -2805,6 +2889,40 @@ onMounted(async () => {
 
   .hero-content {
     padding: 1.5rem 1rem;
+  }
+
+  /* Grupos responsive */
+  .groups-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .group-card {
+    padding: 1.5rem;
+    margin: 0 1rem;
+  }
+
+  .group-header {
+    flex-direction: column;
+    gap: 1rem;
+    text-align: center;
+  }
+
+  .group-header h3 {
+    font-size: 1.2rem;
+  }
+
+  .team-item {
+    padding: 0.8rem;
+  }
+
+  .team-logo {
+    width: 40px;
+    height: 40px;
+  }
+
+  .team-name {
+    font-size: 0.9rem;
   }
 
   .tournament-logo-hero {
