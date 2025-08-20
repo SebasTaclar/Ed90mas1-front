@@ -157,8 +157,8 @@
                 :disabled="editingMatch !== null" title="Editar lugar">
                 📍
               </button>
-              <!-- Botón eliminar solo para partidos de fase eliminatoria (NO Group Stage) -->
-              <button v-if="match.round && match.round.trim() !== '' && match.round !== 'Group Stage'"
+              <!-- Botón eliminar solo para partidos de fase eliminatoria (NO Fase de grupos) -->
+              <button v-if="match.round && match.round.trim() !== '' && match.round !== 'Fase de grupos'"
                 @click="confirmDeleteMatch(match)" class="edit-btn delete-btn"
                 :disabled="editingMatch !== null || isDeletingMatch" title="Eliminar partido eliminatorio">
                 🗑️
