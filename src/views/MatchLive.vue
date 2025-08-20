@@ -1,218 +1,223 @@
 <template>
   <div class="match-live">
-    <!-- Header del partido -->
-    <div class="match-header">
-      <button @click="goBack" class="back-button">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="m15 18-6-6 6-6" />
-        </svg>
-        Volver
-      </button>
+    <!-- Contenido principal -->
+    <div v-show="!loading" class="main-content">
+      <!-- Header del partido -->
+      <div class="match-header">
+        <button @click="goBack" class="back-button">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="m15 18-6-6 6-6" />
+          </svg>
+          Volver
+        </button>
 
-      <div class="match-info">
-        <h1>{{ matchData?.homeTeam.teamName }} vs {{ matchData?.awayTeam.teamName }}</h1>
-        <div class="match-score">
-          <div class="score-display">
-            <span class="home-score">{{ homeScore }}</span>
-            <span class="score-separator">-</span>
-            <span class="away-score">{{ awayScore }}</span>
-          </div>
-          <div class="match-time">
-            <span class="period-display" :class="{ 'live': isMatchLive }">{{ currentPeriod }}</span>
-            <span class="match-status">{{ matchStatus }}</span>
+        <div class="match-info">
+          <h1>{{ matchData?.homeTeam.teamName }} vs {{ matchData?.awayTeam.teamName }}</h1>
+          <div class="match-score">
+            <div class="score-display">
+              <span class="home-score">{{ homeScore }}</span>
+              <span class="score-separator">-</span>
+              <span class="away-score">{{ awayScore }}</span>
+            </div>
+            <div class="match-time">
+              <span class="period-display" :class="{ 'live': isMatchLive }">{{ currentPeriod }}</span>
+              <span class="match-status">{{ matchStatus }}</span>
+            </div>
           </div>
         </div>
-      </div>
 
-      <!-- Controles del partido -->
-      <div class="match-controls">
-        <!-- No iniciado -->
-        <button v-if="matchPeriod === 'not_started'" @click="startFirstHalf" class="control-btn start-btn">
-          ⚽ Iniciar Primer Tiempo
-        </button>
-
-        <!-- Primer tiempo en curso -->
-        <button v-if="matchPeriod === 'in_progress_1_half'" @click="endFirstHalf" class="control-btn pause-btn">
-          ⏸️ Finalizar Primer Tiempo
-        </button>
-
-        <!-- Descanso -->
-        <button v-if="matchPeriod === 'finished_1_half'" @click="startSecondHalf" class="control-btn start-btn">
-          ⚽ Iniciar Segundo Tiempo
-        </button>
-
-        <!-- Segundo tiempo en curso -->
-        <div v-if="matchPeriod === 'in_progress_2_half'" class="control-group">
-          <button @click="endSecondHalf" class="control-btn pause-btn">
-            ⏸️ Finalizar Segundo Tiempo
+        <!-- Controles del partido -->
+        <div class="match-controls">
+          <!-- No iniciado -->
+          <button v-if="matchPeriod === 'not_started'" @click="startFirstHalf" class="control-btn start-btn">
+            ⚽ Iniciar Primer Tiempo
           </button>
-          <button @click="finishMatch" class="control-btn finish-btn">
+
+          <!-- Primer tiempo en curso -->
+          <button v-if="matchPeriod === 'in_progress_1_half'" @click="endFirstHalf" class="control-btn pause-btn">
+            ⏸️ Finalizar Primer Tiempo
+          </button>
+
+          <!-- Descanso -->
+          <button v-if="matchPeriod === 'finished_1_half'" @click="startSecondHalf" class="control-btn start-btn">
+            ⚽ Iniciar Segundo Tiempo
+          </button>
+
+          <!-- Segundo tiempo en curso -->
+          <div v-if="matchPeriod === 'in_progress_2_half'" class="control-group">
+            <button @click="endSecondHalf" class="control-btn pause-btn">
+              ⏸️ Finalizar Segundo Tiempo
+            </button>
+            <button @click="finishMatch" class="control-btn finish-btn">
+              ✅ Finalizar Partido
+            </button>
+          </div>
+
+          <!-- Segundo tiempo finalizado -->
+          <div v-if="matchPeriod === 'finished_2_half'" class="control-group">
+            <button @click="finishMatch" class="control-btn finish-btn">
+              ✅ Finalizar Partido
+            </button>
+            <button @click="startPenalties" class="control-btn penalty-btn">
+              🥅 Ir a Penaltis
+            </button>
+          </div>
+
+          <!-- Penaltis -->
+          <button v-if="matchPeriod === 'penalties'" @click="finishMatch" class="control-btn finish-btn">
             ✅ Finalizar Partido
           </button>
-        </div>
 
-        <!-- Segundo tiempo finalizado -->
-        <div v-if="matchPeriod === 'finished_2_half'" class="control-group">
-          <button @click="finishMatch" class="control-btn finish-btn">
-            ✅ Finalizar Partido
+          <!-- Finalizado -->
+          <span v-if="matchPeriod === 'finished'" class="control-btn finished-btn">
+            🏆 Partido Finalizado
+          </span>
+
+          <!-- Botón de reiniciar - siempre visible excepto cuando no iniciado -->
+          <button v-if="matchPeriod !== 'not_started'" @click="showRestartConfirmation = true"
+            class="control-btn restart-btn">
+            🔄 Reiniciar Partido
           </button>
-          <button @click="startPenalties" class="control-btn penalty-btn">
-            🥅 Ir a Penaltis
-          </button>
         </div>
-
-        <!-- Penaltis -->
-        <button v-if="matchPeriod === 'penalties'" @click="finishMatch" class="control-btn finish-btn">
-          ✅ Finalizar Partido
-        </button>
-
-        <!-- Finalizado -->
-        <span v-if="matchPeriod === 'finished'" class="control-btn finished-btn">
-          🏆 Partido Finalizado
-        </span>
-
-        <!-- Botón de reiniciar - siempre visible excepto cuando no iniciado -->
-        <button v-if="matchPeriod !== 'not_started'" @click="showRestartConfirmation = true"
-          class="control-btn restart-btn">
-          🔄 Reiniciar Partido
-        </button>
       </div>
-    </div>
 
-    <!-- Equipos y jugadores -->
-    <div class="teams-container">
-      <!-- Equipo Local -->
-      <div class="team-panel home-team">
-        <div class="team-header">
-          <img :src="matchData?.homeTeam.teamLogo || '/images/logo.png'" :alt="matchData?.homeTeam.teamName"
-            class="team-logo">
-          <h2>{{ matchData?.homeTeam.teamName }}</h2>
-          <span class="team-label">LOCAL</span>
+      <!-- Equipos y jugadores -->
+      <div class="teams-container">
+        <!-- Equipo Local -->
+        <div class="team-panel home-team">
+          <div class="team-header">
+            <img :src="matchData?.homeTeam.teamLogo || '/images/logo.png'" :alt="matchData?.homeTeam.teamName"
+              class="team-logo">
+            <h2>{{ matchData?.homeTeam.teamName }}</h2>
+            <span class="team-label">LOCAL</span>
+          </div>
+
+          <div class="players-list">
+            <h3>Jugadores en Campo</h3>
+            <div v-if="homeAttendingPlayers.length === 0" class="no-players">
+              <p>No hay jugadores confirmados para este equipo</p>
+            </div>
+            <div v-else class="players-grid">
+              <div v-for="player in homeAttendingPlayers" :key="player.id" class="player-card"
+                @click="selectPlayer(player, 'home')"
+                :class="{ 'selected': selectedPlayer?.id === player.id && selectedTeam === 'home' }">
+                <div class="player-photo">
+                  <img v-if="player.photoPath" :src="player.photoPath" :alt="getPlayerName(player)"
+                    @error="handlePhotoError">
+                  <div v-else class="player-initials">
+                    {{ getPlayerInitials(player) }}
+                  </div>
+                  <div class="player-number">{{ player.jerseyNumber }}</div>
+                </div>
+                <div class="player-info">
+                  <span class="player-name">{{ getPlayerName(player) }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div class="players-list">
-          <h3>Jugadores en Campo</h3>
-          <div v-if="homeAttendingPlayers.length === 0" class="no-players">
-            <p>No hay jugadores confirmados para este equipo</p>
-          </div>
-          <div v-else class="players-grid">
-            <div v-for="player in homeAttendingPlayers" :key="player.id" class="player-card"
-              @click="selectPlayer(player, 'home')"
-              :class="{ 'selected': selectedPlayer?.id === player.id && selectedTeam === 'home' }">
-              <div class="player-photo">
-                <img v-if="player.photoPath" :src="player.photoPath" :alt="getPlayerName(player)"
-                  @error="handlePhotoError">
-                <div v-else class="player-initials">
-                  {{ getPlayerInitials(player) }}
-                </div>
-                <div class="player-number">{{ player.jerseyNumber }}</div>
+        <!-- Panel de Eventos -->
+        <div class="events-panel">
+          <div class="event-controls">
+            <h3>Agregar Evento</h3>
+
+            <div v-if="selectedPlayer" class="selected-player-info">
+              <p>Jugador seleccionado:</p>
+              <div class="selected-player-display">
+                <span class="player-name">{{ getPlayerName(selectedPlayer) }}</span>
+                <span class="team-name">({{ selectedTeam === 'home' ? matchData?.homeTeam.teamName :
+                  matchData?.awayTeam.teamName
+                  }})</span>
               </div>
-              <div class="player-info">
-                <span class="player-name">{{ getPlayerName(player) }}</span>
+            </div>
+
+            <div class="event-buttons" v-if="selectedPlayer">
+              <button @click="addEvent('goal')" class="event-btn goal-btn">
+                ⚽ Gol
+              </button>
+              <button @click="addEvent('yellow_card')" class="event-btn yellow-card-btn">
+                🟨 Tarjeta Amarilla
+              </button>
+              <button @click="addEvent('red_card')" class="event-btn red-card-btn">
+                🟥 Tarjeta Roja
+              </button>
+              <button @click="addEvent('substitution')" class="event-btn sub-btn">
+                🔄 Sustitución
+              </button>
+            </div>
+
+            <div v-else class="no-player-selected">
+              <p>Selecciona un jugador para agregar eventos</p>
+            </div>
+          </div>
+
+          <!-- Lista de eventos -->
+          <div class="events-timeline">
+            <h4>Eventos del Partido</h4>
+            <div v-if="matchEvents.length === 0" class="no-events">
+              <p>No hay eventos registrados</p>
+            </div>
+            <div v-else class="events-list">
+              <div v-for="event in sortedEvents" :key="event.id" class="event-item" :class="event.type">
+                <div class="event-details">
+                  <div class="event-type">
+                    <span class="event-icon">{{ getEventIcon(event.type) }}</span>
+                    <span class="event-label">{{ getEventLabel(event.type) }}</span>
+                  </div>
+                  <div class="event-player">
+                    {{ event.playerName }}
+                    <span class="event-team">({{ event.teamName }})</span>
+                  </div>
+                </div>
+                <button @click="removeEvent(event.id)" class="remove-event-btn">×</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Equipo Visitante -->
+        <div class="team-panel away-team">
+          <div class="team-header">
+            <img :src="matchData?.awayTeam.teamLogo || '/images/logo.png'" :alt="matchData?.awayTeam.teamName"
+              class="team-logo">
+            <h2>{{ matchData?.awayTeam.teamName }}</h2>
+            <span class="team-label">VISITANTE</span>
+          </div>
+
+          <div class="players-list">
+            <h3>Jugadores en Campo</h3>
+            <div v-if="awayAttendingPlayers.length === 0" class="no-players">
+              <p>No hay jugadores confirmados para este equipo</p>
+            </div>
+            <div v-else class="players-grid">
+              <div v-for="player in awayAttendingPlayers" :key="player.id" class="player-card"
+                @click="selectPlayer(player, 'away')"
+                :class="{ 'selected': selectedPlayer?.id === player.id && selectedTeam === 'away' }">
+                <div class="player-photo">
+                  <img v-if="player.photoPath" :src="player.photoPath" :alt="getPlayerName(player)"
+                    @error="handlePhotoError">
+                  <div v-else class="player-initials">
+                    {{ getPlayerInitials(player) }}
+                  </div>
+                  <div class="player-number">{{ player.jerseyNumber }}</div>
+                </div>
+                <div class="player-info">
+                  <span class="player-name">{{ getPlayerName(player) }}</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
+    </div> <!-- Cierre de main-content -->
 
-      <!-- Panel de Eventos -->
-      <div class="events-panel">
-        <div class="event-controls">
-          <h3>Agregar Evento</h3>
-
-          <div v-if="selectedPlayer" class="selected-player-info">
-            <p>Jugador seleccionado:</p>
-            <div class="selected-player-display">
-              <span class="player-name">{{ getPlayerName(selectedPlayer) }}</span>
-              <span class="team-name">({{ selectedTeam === 'home' ? matchData?.homeTeam.teamName :
-                matchData?.awayTeam.teamName
-                }})</span>
-            </div>
-          </div>
-
-          <div class="event-buttons" v-if="selectedPlayer">
-            <button @click="addEvent('goal')" class="event-btn goal-btn">
-              ⚽ Gol
-            </button>
-            <button @click="addEvent('yellow_card')" class="event-btn yellow-card-btn">
-              🟨 Tarjeta Amarilla
-            </button>
-            <button @click="addEvent('red_card')" class="event-btn red-card-btn">
-              🟥 Tarjeta Roja
-            </button>
-            <button @click="addEvent('substitution')" class="event-btn sub-btn">
-              🔄 Sustitución
-            </button>
-          </div>
-
-          <div v-else class="no-player-selected">
-            <p>Selecciona un jugador para agregar eventos</p>
-          </div>
-        </div>
-
-        <!-- Lista de eventos -->
-        <div class="events-timeline">
-          <h4>Eventos del Partido</h4>
-          <div v-if="matchEvents.length === 0" class="no-events">
-            <p>No hay eventos registrados</p>
-          </div>
-          <div v-else class="events-list">
-            <div v-for="event in sortedEvents" :key="event.id" class="event-item" :class="event.type">
-              <div class="event-details">
-                <div class="event-type">
-                  <span class="event-icon">{{ getEventIcon(event.type) }}</span>
-                  <span class="event-label">{{ getEventLabel(event.type) }}</span>
-                </div>
-                <div class="event-player">
-                  {{ event.playerName }}
-                  <span class="event-team">({{ event.teamName }})</span>
-                </div>
-              </div>
-              <button @click="removeEvent(event.id)" class="remove-event-btn">×</button>
-            </div>
-          </div>
-        </div>
+    <!-- Loading overlay -->
+    <div v-if="loading" class="loading-overlay">
+      <div class="loading-container">
+        <div class="spinner"></div>
+        <p>Procesando...</p>
       </div>
-
-      <!-- Equipo Visitante -->
-      <div class="team-panel away-team">
-        <div class="team-header">
-          <img :src="matchData?.awayTeam.teamLogo || '/images/logo.png'" :alt="matchData?.awayTeam.teamName"
-            class="team-logo">
-          <h2>{{ matchData?.awayTeam.teamName }}</h2>
-          <span class="team-label">VISITANTE</span>
-        </div>
-
-        <div class="players-list">
-          <h3>Jugadores en Campo</h3>
-          <div v-if="awayAttendingPlayers.length === 0" class="no-players">
-            <p>No hay jugadores confirmados para este equipo</p>
-          </div>
-          <div v-else class="players-grid">
-            <div v-for="player in awayAttendingPlayers" :key="player.id" class="player-card"
-              @click="selectPlayer(player, 'away')"
-              :class="{ 'selected': selectedPlayer?.id === player.id && selectedTeam === 'away' }">
-              <div class="player-photo">
-                <img v-if="player.photoPath" :src="player.photoPath" :alt="getPlayerName(player)"
-                  @error="handlePhotoError">
-                <div v-else class="player-initials">
-                  {{ getPlayerInitials(player) }}
-                </div>
-                <div class="player-number">{{ player.jerseyNumber }}</div>
-              </div>
-              <div class="player-info">
-                <span class="player-name">{{ getPlayerName(player) }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Loading state -->
-    <div v-if="loading" class="loading-container">
-      <div class="spinner"></div>
-      <p>Cargando información del partido...</p>
     </div>
 
     <!-- Modal de confirmación para reiniciar -->
@@ -306,14 +311,6 @@ const isMatchLive = computed(() => {
   return ['in_progress_1_half', 'in_progress_2_half', 'penalties'].includes(matchPeriod.value)
 })
 
-// Computed para controlar qué botones están habilitados
-const canStartFirstHalf = computed(() => matchPeriod.value === 'not_started')
-const canEndFirstHalf = computed(() => matchPeriod.value === 'in_progress_1_half')
-const canStartSecondHalf = computed(() => matchPeriod.value === 'finished_1_half')
-const canEndSecondHalf = computed(() => matchPeriod.value === 'in_progress_2_half')
-const canStartPenalties = computed(() => matchPeriod.value === 'finished_2_half')
-const canFinishMatch = computed(() => ['finished_2_half', 'penalties'].includes(matchPeriod.value))
-
 const homeAttendingPlayers = computed((): Player[] => {
   if (!matchData.value?.attendingPlayers) return []
   const homeTeamId = matchData.value.homeTeam.teamId
@@ -363,13 +360,12 @@ const goBack = () => {
 }
 
 // Funciones de control del partido
-const updateMatchStatus = async (status: string, period: string) => {
+const updateMatchStatus = async (status: string) => {
   if (!matchData.value) return false
 
   try {
     await matchesService.updateMatch(matchData.value.matchId, {
       status: status as any,
-      // Podemos agregar más campos según la estructura de tu API
     })
     return true
   } catch (error) {
@@ -381,7 +377,7 @@ const updateMatchStatus = async (status: string, period: string) => {
 const startFirstHalf = async () => {
   loading.value = true
   try {
-    const success = await updateMatchStatus('in_progress_1_half', 'in_progress_1_half')
+    const success = await updateMatchStatus('in_progress_1_half')
     if (success) {
       // Recargar datos desde la BD para asegurar sincronización
       await loadMatchData()
@@ -394,7 +390,7 @@ const startFirstHalf = async () => {
 const endFirstHalf = async () => {
   loading.value = true
   try {
-    const success = await updateMatchStatus('finished_1_half', 'finished_1_half')
+    const success = await updateMatchStatus('finished_1_half')
     if (success) {
       // Recargar datos desde la BD para asegurar sincronización
       await loadMatchData()
@@ -407,7 +403,7 @@ const endFirstHalf = async () => {
 const startSecondHalf = async () => {
   loading.value = true
   try {
-    const success = await updateMatchStatus('in_progress_2_half', 'in_progress_2_half')
+    const success = await updateMatchStatus('in_progress_2_half')
     if (success) {
       // Recargar datos desde la BD para asegurar sincronización
       await loadMatchData()
@@ -420,7 +416,7 @@ const startSecondHalf = async () => {
 const endSecondHalf = async () => {
   loading.value = true
   try {
-    const success = await updateMatchStatus('finished_2_half', 'finished_2_half')
+    const success = await updateMatchStatus('finished_2_half')
     if (success) {
       // Recargar datos desde la BD para asegurar sincronización
       await loadMatchData()
@@ -433,7 +429,7 @@ const endSecondHalf = async () => {
 const startPenalties = async () => {
   loading.value = true
   try {
-    const success = await updateMatchStatus('penalties', 'penalties')
+    const success = await updateMatchStatus('penalties')
     if (success) {
       // Recargar datos desde la BD para asegurar sincronización
       await loadMatchData()
@@ -446,7 +442,7 @@ const startPenalties = async () => {
 const finishMatch = async () => {
   loading.value = true
   try {
-    const success = await updateMatchStatus('finished', 'finished')
+    const success = await updateMatchStatus('finished')
     if (success) {
       // Recargar datos desde la BD para asegurar sincronización
       await loadMatchData()
@@ -459,7 +455,7 @@ const finishMatch = async () => {
 const confirmRestartMatch = async () => {
   loading.value = true
   try {
-    const success = await updateMatchStatus('not_started', 'not_started')
+    const success = await updateMatchStatus('not_started')
     if (success) {
       // Eliminar todos los eventos del partido de la base de datos
       try {
@@ -577,8 +573,6 @@ const addEvent = async (eventType: 'goal' | 'yellow_card' | 'red_card' | 'substi
 
       // Si ya tiene una amarilla, agregar la segunda amarilla y luego automáticamente una roja
       if (previousYellows.length === 1) {
-        // Guardar la segunda amarilla en BD
-        const yellowDbId = await saveEventToDatabase(event)
 
         // Luego crear y guardar automáticamente la tarjeta roja
         const redCardEvent: MatchEvent = {
@@ -1419,19 +1413,37 @@ onUnmounted(() => {
   opacity: 0.6;
 }
 
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
 .loading-container {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 50vh;
+  padding: 2rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
   gap: 1rem;
+  color: white;
+  text-align: center;
 }
 
 .spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid rgba(255, 255, 255, 0.3);
+  width: 60px;
+  height: 60px;
+  border: 6px solid rgba(255, 255, 255, 0.3);
   border-left-color: #22c55e;
   border-radius: 50%;
   animation: spin 1s linear infinite;
