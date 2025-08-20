@@ -126,7 +126,7 @@
               <span class="player-name">{{ getPlayerName(selectedPlayer) }}</span>
               <span class="team-name">({{ selectedTeam === 'home' ? matchData?.homeTeam.teamName :
                 matchData?.awayTeam.teamName
-                }})</span>
+              }})</span>
             </div>
           </div>
 
@@ -158,7 +158,7 @@
           </div>
           <div v-else class="events-list">
             <div v-for="event in sortedEvents" :key="event.id" class="event-item" :class="event.type">
-              <div class="event-time">{{ event.minute }}'</div>
+              <div class="event-time">#{{ event.eventIndex }}</div>
               <div class="event-details">
                 <div class="event-type">
                   <span class="event-icon">{{ getEventIcon(event.type) }}</span>
@@ -336,7 +336,18 @@ const awayAttendingPlayers = computed((): Player[] => {
 })
 
 const sortedEvents = computed(() => {
-  return [...matchEvents.value].sort((a, b) => a.minute - b.minute)
+  // Ordenar por createdAt/timestamp descendente (más reciente primero)
+  const sorted = [...matchEvents.value].sort((a, b) => {
+    const timeA = a.timestamp.getTime()
+    const timeB = b.timestamp.getTime()
+    return timeB - timeA // Más reciente primero
+  })
+
+  // Agregar índice a cada evento (1 para el más reciente, etc.)
+  return sorted.map((event, index) => ({
+    ...event,
+    eventIndex: index + 1
+  }))
 })
 
 // Funciones de utilidad
@@ -377,71 +388,106 @@ const updateMatchStatus = async (status: string, period: string) => {
 }
 
 const startFirstHalf = async () => {
-  const success = await updateMatchStatus('in_progress_1_half', 'in_progress_1_half')
-  if (success) {
-    matchPeriod.value = 'in_progress_1_half'
+  loading.value = true
+  try {
+    const success = await updateMatchStatus('in_progress_1_half', 'in_progress_1_half')
+    if (success) {
+      // Recargar datos desde la BD para asegurar sincronización
+      await loadMatchData()
+    }
+  } finally {
+    loading.value = false
   }
 }
 
 const endFirstHalf = async () => {
-  const success = await updateMatchStatus('finished_1_half', 'finished_1_half')
-  if (success) {
-    matchPeriod.value = 'finished_1_half'
+  loading.value = true
+  try {
+    const success = await updateMatchStatus('finished_1_half', 'finished_1_half')
+    if (success) {
+      // Recargar datos desde la BD para asegurar sincronización
+      await loadMatchData()
+    }
+  } finally {
+    loading.value = false
   }
 }
 
 const startSecondHalf = async () => {
-  const success = await updateMatchStatus('in_progress_2_half', 'in_progress_2_half')
-  if (success) {
-    matchPeriod.value = 'in_progress_2_half'
+  loading.value = true
+  try {
+    const success = await updateMatchStatus('in_progress_2_half', 'in_progress_2_half')
+    if (success) {
+      // Recargar datos desde la BD para asegurar sincronización
+      await loadMatchData()
+    }
+  } finally {
+    loading.value = false
   }
 }
 
 const endSecondHalf = async () => {
-  const success = await updateMatchStatus('finished_2_half', 'finished_2_half')
-  if (success) {
-    matchPeriod.value = 'finished_2_half'
+  loading.value = true
+  try {
+    const success = await updateMatchStatus('finished_2_half', 'finished_2_half')
+    if (success) {
+      // Recargar datos desde la BD para asegurar sincronización
+      await loadMatchData()
+    }
+  } finally {
+    loading.value = false
   }
 }
 
 const startPenalties = async () => {
-  const success = await updateMatchStatus('penalties', 'penalties')
-  if (success) {
-    matchPeriod.value = 'penalties'
+  loading.value = true
+  try {
+    const success = await updateMatchStatus('penalties', 'penalties')
+    if (success) {
+      // Recargar datos desde la BD para asegurar sincronización
+      await loadMatchData()
+    }
+  } finally {
+    loading.value = false
   }
 }
 
 const finishMatch = async () => {
-  const success = await updateMatchStatus('finished', 'finished')
-  if (success) {
-    matchPeriod.value = 'finished'
+  loading.value = true
+  try {
+    const success = await updateMatchStatus('finished', 'finished')
+    if (success) {
+      // Recargar datos desde la BD para asegurar sincronización
+      await loadMatchData()
+    }
+  } finally {
+    loading.value = false
   }
 }
 
 const confirmRestartMatch = async () => {
-  const success = await updateMatchStatus('not_started', 'not_started')
-  if (success) {
-    // Limpiar todos los eventos del partido
-    matchEvents.value = []
-    // Limpiar scores
-    homeScore.value = 0
-    awayScore.value = 0
-    // Resetear período
-    matchPeriod.value = 'not_started'
-
-    // Aquí podrías agregar lógica para eliminar eventos de la BD
-    try {
+  loading.value = true
+  try {
+    const success = await updateMatchStatus('not_started', 'not_started')
+    if (success) {
       // Eliminar todos los eventos del partido de la base de datos
-      for (const event of matchEvents.value) {
-        if (event.dbId && typeof event.dbId === 'number' && matchData.value) {
-          await matchEventsService.deleteMatchEvent(matchData.value.matchId, event.dbId)
+      try {
+        for (const event of matchEvents.value) {
+          if (event.dbId && typeof event.dbId === 'number' && matchData.value) {
+            await matchEventsService.deleteMatchEvent(matchData.value.matchId, event.dbId)
+          }
         }
+      } catch (error) {
+        console.error('Error deleting match events:', error)
       }
-    } catch (error) {
-      console.error('Error deleting match events:', error)
+
+      // Recargar datos desde la BD para asegurar sincronización completa
+      await loadMatchData()
     }
+    showRestartConfirmation.value = false
+  } finally {
+    loading.value = false
   }
-  showRestartConfirmation.value = false
 }
 
 // Funciones de jugadores y eventos
@@ -499,131 +545,119 @@ const deleteEventFromDatabase = async (dbEventId: number): Promise<boolean> => {
 const addEvent = async (eventType: 'goal' | 'yellow_card' | 'red_card' | 'substitution') => {
   if (!selectedPlayer.value || !selectedTeam.value || !matchData.value) return
 
-  // Calcular el minuto basado en el período actual
-  let currentMinute = 0
-  switch (matchPeriod.value) {
-    case 'in_progress_1_half':
-      currentMinute = Math.floor(Math.random() * 45) + 1 // 1-45 minutos
-      break
-    case 'in_progress_2_half':
-      currentMinute = Math.floor(Math.random() * 45) + 46 // 46-90 minutos
-      break
-    case 'penalties':
-      currentMinute = 120 // Penaltis se registran en minuto 120
-      break
-    default:
-      currentMinute = 1
-  }
+  // Mostrar spinner y deshabilitar pantalla
+  loading.value = true
 
-  const teamData = selectedTeam.value === 'home' ? matchData.value.homeTeam : matchData.value.awayTeam
-
-  const event: MatchEvent = {
-    id: `${Date.now()}-${Math.random()}`,
-    type: eventType,
-    minute: currentMinute,
-    playerId: selectedPlayer.value.id,
-    playerName: getPlayerName(selectedPlayer.value),
-    teamId: teamData.teamId,
-    teamName: teamData.teamName,
-    timestamp: new Date()
-  }
-
-  // Verificar si es segunda amarilla antes de agregar el evento
-  if (eventType === 'yellow_card') {
-    const previousYellows = matchEvents.value.filter(e =>
-      e.playerId === selectedPlayer.value!.id && e.type === 'yellow_card'
-    )
-
-    // Si ya tiene una amarilla, agregar la segunda amarilla y luego automáticamente una roja
-    if (previousYellows.length === 1) {
-      // Primero agregar la segunda amarilla
-      matchEvents.value.push(event)
-
-      // Guardar la segunda amarilla en BD
-      const yellowDbId = await saveEventToDatabase(event)
-      if (yellowDbId) {
-        event.dbId = yellowDbId
-        event.id = yellowDbId
-      }
-
-      // Luego agregar automáticamente la tarjeta roja
-      const redCardEvent: MatchEvent = {
-        id: `${Date.now() + 1}-${Math.random()}`,
-        type: 'red_card',
-        minute: currentMinute,
-        playerId: selectedPlayer.value.id,
-        playerName: getPlayerName(selectedPlayer.value),
-        teamId: teamData.teamId,
-        teamName: teamData.teamName,
-        timestamp: new Date()
-      }
-      matchEvents.value.push(redCardEvent)
-
-      // Guardar la tarjeta roja en BD
-      const redDbId = await saveEventToDatabase(redCardEvent)
-      if (redDbId) {
-        redCardEvent.dbId = redDbId
-        redCardEvent.id = redDbId
-      }
-
-      // Limpiar selección después de agregar eventos
-      selectedPlayer.value = null
-      selectedTeam.value = null
-      return
+  try {
+    // Calcular el minuto basado en el período actual
+    let currentMinute = 0
+    switch (matchPeriod.value) {
+      case 'in_progress_1_half':
+        currentMinute = Math.floor(Math.random() * 45) + 1 // 1-45 minutos
+        break
+      case 'in_progress_2_half':
+        currentMinute = Math.floor(Math.random() * 45) + 46 // 46-90 minutos
+        break
+      case 'penalties':
+        currentMinute = 120 // Penaltis se registran en minuto 120
+        break
+      default:
+        currentMinute = 1
     }
-  }
 
-  // Agregar el evento localmente
-  matchEvents.value.push(event)
+    const teamData = selectedTeam.value === 'home' ? matchData.value.homeTeam : matchData.value.awayTeam
 
-  // Guardar en la base de datos
-  const dbEventId = await saveEventToDatabase(event)
-  if (dbEventId) {
-    event.dbId = dbEventId
-    event.id = dbEventId
-  }
-
-  // Actualizar puntaje si es gol
-  if (eventType === 'goal') {
-    if (selectedTeam.value === 'home') {
-      homeScore.value++
-    } else {
-      awayScore.value++
+    const event: MatchEvent = {
+      id: `${Date.now()}-${Math.random()}`,
+      type: eventType,
+      minute: currentMinute,
+      playerId: selectedPlayer.value.id,
+      playerName: getPlayerName(selectedPlayer.value),
+      teamId: teamData.teamId,
+      teamName: teamData.teamName,
+      timestamp: new Date()
     }
-  }
 
-  // Limpiar selección después de agregar evento
-  selectedPlayer.value = null
-  selectedTeam.value = null
+    // Verificar si es segunda amarilla antes de agregar el evento
+    if (eventType === 'yellow_card') {
+      const previousYellows = matchEvents.value.filter(e =>
+        e.playerId === selectedPlayer.value!.id && e.type === 'yellow_card'
+      )
+
+      // Si ya tiene una amarilla, agregar la segunda amarilla y luego automáticamente una roja
+      if (previousYellows.length === 1) {
+        // Guardar la segunda amarilla en BD
+        const yellowDbId = await saveEventToDatabase(event)
+
+        // Luego crear y guardar automáticamente la tarjeta roja
+        const redCardEvent: MatchEvent = {
+          id: `${Date.now() + 1}-${Math.random()}`,
+          type: 'red_card',
+          minute: currentMinute,
+          playerId: selectedPlayer.value.id,
+          playerName: getPlayerName(selectedPlayer.value),
+          teamId: teamData.teamId,
+          teamName: teamData.teamName,
+          timestamp: new Date()
+        }
+
+        // Guardar la tarjeta roja en BD
+        await saveEventToDatabase(redCardEvent)
+
+        // Recargar datos desde la BD
+        await loadMatchData()
+
+        // Limpiar selección después de agregar eventos
+        selectedPlayer.value = null
+        selectedTeam.value = null
+        return
+      }
+    }
+
+    // Guardar en la base de datos
+    await saveEventToDatabase(event)
+
+    // Recargar datos completos desde la base de datos
+    await loadMatchData()
+
+    // Limpiar selección después de agregar evento
+    selectedPlayer.value = null
+    selectedTeam.value = null
+
+  } catch (error) {
+    console.error('Error adding event:', error)
+  } finally {
+    loading.value = false
+  }
 }
 
 const removeEvent = async (eventId: string | number) => {
-  const eventIndex = matchEvents.value.findIndex(e => e.id === eventId)
-  if (eventIndex === -1) return
+  // Mostrar spinner y deshabilitar pantalla
+  loading.value = true
 
-  const event = matchEvents.value[eventIndex]
+  try {
+    const eventIndex = matchEvents.value.findIndex(e => e.id === eventId)
+    if (eventIndex === -1) return
 
-  // Si el evento tiene dbId, eliminarlo de la base de datos
-  if (event.dbId && typeof event.dbId === 'number') {
-    const deleted = await deleteEventFromDatabase(event.dbId)
-    if (!deleted) {
-      console.error('No se pudo eliminar el evento de la base de datos')
-      return // No eliminar localmente si no se pudo eliminar de la BD
+    const event = matchEvents.value[eventIndex]
+
+    // Si el evento tiene dbId, eliminarlo de la base de datos
+    if (event.dbId && typeof event.dbId === 'number') {
+      const deleted = await deleteEventFromDatabase(event.dbId)
+      if (!deleted) {
+        console.error('No se pudo eliminar el evento de la base de datos')
+        return // No eliminar localmente si no se pudo eliminar de la BD
+      }
     }
-  }
 
-  // Si es un gol, actualizar el puntaje
-  if (event.type === 'goal') {
-    const isHomeTeam = event.teamId === matchData.value?.homeTeam.teamId
-    if (isHomeTeam) {
-      homeScore.value = Math.max(0, homeScore.value - 1)
-    } else {
-      awayScore.value = Math.max(0, awayScore.value - 1)
-    }
-  }
+    // Recargar datos completos desde la base de datos
+    await loadMatchData()
 
-  // Eliminar el evento localmente
-  matchEvents.value.splice(eventIndex, 1)
+  } catch (error) {
+    console.error('Error removing event:', error)
+  } finally {
+    loading.value = false
+  }
 }
 
 const getEventIcon = (eventType: string): string => {
