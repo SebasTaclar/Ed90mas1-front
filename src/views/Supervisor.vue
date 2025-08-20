@@ -457,8 +457,6 @@ const approveEntry = (entryId: number) => {
   const entry = pendingEntries.value.find(e => e.id === entryId)
   if (entry) {
     entry.status = 'approved'
-    // Aquí se podría hacer una llamada a la API para persistir el cambio
-    console.log(`Entrada ${entryId} aprobada`)
   }
 }
 
@@ -466,8 +464,6 @@ const rejectEntry = (entryId: number) => {
   const entry = pendingEntries.value.find(e => e.id === entryId)
   if (entry) {
     entry.status = 'rejected'
-    // Aquí se podría hacer una llamada a la API para persistir el cambio
-    console.log(`Entrada ${entryId} rechazada`)
   }
 }
 </script>

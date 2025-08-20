@@ -153,28 +153,12 @@ onMounted(async () => {
   const userRole = getUserRole()
   const teamId = getUserTeamId()
 
-  console.log('=== DEBUG AdminTeamPlayers onMounted ===')
-  console.log('User Role:', userRole)
-  console.log('Team ID:', teamId)
-  console.log('User Info completa:', JSON.stringify(authService.getCurrentUser(), null, 2))
-
   // Solo cargar equipos una vez
   await loadTeams()
 
   // Si el usuario tiene rol 'team' y un teamId válido, cargar jugadores
-  if (userRole === 'team' && teamId) {
-    console.log('Cargando jugadores para equipo:', teamId)
-    const result = await loadPlayersByTeam(teamId)
-    if (!result.success) {
-      console.error('Error cargando jugadores:', result.message)
-    } else {
-      console.log('Jugadores cargados exitosamente:', result)
-    }
-  } else {
-    console.log('No se cumplen las condiciones para cargar jugadores:')
-    console.log('- userRole === "team":', userRole === 'team')
-    console.log('- teamId existe:', !!teamId)
-  }
+  if (userRole === 'team' && teamId)
+    await loadPlayersByTeam(teamId)
 })
 
 /**

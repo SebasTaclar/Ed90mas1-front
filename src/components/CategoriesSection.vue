@@ -58,12 +58,7 @@
       <!-- Grid horizontal de categorías -->
       <div v-else class="categories-container">
         <div class="categories-scroll">
-          <div
-            v-for="category in categories"
-            :key="category.id"
-            class="category-card"
-            @click="selectCategory(category)"
-          >
+          <div v-for="category in categories" :key="category.id" class="category-card">
             <div class="card-glow"></div>
             <div class="category-icon">
               <span>{{ getCategoryIcon(category.name) }}</span>
@@ -93,18 +88,10 @@
 
         <!-- Controles de navegación -->
         <div class="scroll-controls">
-          <button
-            class="scroll-btn scroll-left"
-            @click="scrollLeft"
-            :disabled="isScrollAtStart"
-          >
+          <button class="scroll-btn scroll-left" @click="scrollLeft" :disabled="isScrollAtStart">
             <span>←</span>
           </button>
-          <button
-            class="scroll-btn scroll-right"
-            @click="scrollRight"
-            :disabled="isScrollAtEnd"
-          >
+          <button class="scroll-btn scroll-right" @click="scrollRight" :disabled="isScrollAtEnd">
             <span>→</span>
           </button>
         </div>
@@ -112,12 +99,8 @@
 
       <!-- Indicadores de progreso -->
       <div v-if="categories.length > 0" class="scroll-indicators">
-        <div
-          v-for="(category, index) in categories"
-          :key="`indicator-${category.id}`"
-          :class="['indicator', { active: index === activeIndicator }]"
-          @click="scrollToCategory(index)"
-        ></div>
+        <div v-for="(category, index) in categories" :key="`indicator-${category.id}`"
+          :class="['indicator', { active: index === activeIndicator }]" @click="scrollToCategory(index)"></div>
       </div>
     </div>
   </section>
@@ -177,13 +160,6 @@ const getTournamentsCount = (_categoryId: number): number => {
 const getTeamsCount = (_categoryId: number): number => {
   // Aquí integrarías con tu API para obtener el conteo real
   return Math.floor(Math.random() * 20) + 8
-}
-
-// Función para seleccionar una categoría
-const selectCategory = (category: Category) => {
-  console.log('Categoría seleccionada:', category)
-  // Aquí puedes navegar a una vista específica de la categoría
-  // o filtrar torneos por categoría
 }
 
 // Funciones de scroll
@@ -293,8 +269,15 @@ onMounted(async () => {
 }
 
 @keyframes float {
-  0%, 100% { transform: translateY(0px) rotate(0deg); }
-  50% { transform: translateY(-15px) rotate(3deg); }
+
+  0%,
+  100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+
+  50% {
+    transform: translateY(-15px) rotate(3deg);
+  }
 }
 
 .container {
@@ -639,8 +622,13 @@ onMounted(async () => {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .error-container {

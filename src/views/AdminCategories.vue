@@ -183,11 +183,8 @@ const handleSave = async () => {
 const handleDelete = async () => {
   if (categoryToDelete.value) {
     const result = await deleteCategory(categoryToDelete.value.id);
-    if (result.success) {
-      console.log('Categoría eliminada exitosamente');
-    } else {
+    if (!result.success)
       alert('Error al eliminar la categoría: ' + result.message);
-    }
   }
   closeDeleteModal();
 };

@@ -55,8 +55,6 @@ const handleLogin = async () => {
     const response = await authService.login(credentials);
 
     if (response.success) {
-      console.log('Login successful:', response.message);
-      // Redirigir según el rol del usuario
       const userInfo = authService.getCurrentUser();
 
       if (userInfo?.role === 'admin') {

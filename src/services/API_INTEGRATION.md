@@ -142,12 +142,6 @@ const handleLogin = async () => {
     email: 'user@example.com',
     password: 'password123'
   });
-
-  if (result.success) {
-    console.log('Login exitoso:', currentUser.value);
-  } else {
-    console.error('Error:', result.message);
-  }
 };
 </script>
 ```

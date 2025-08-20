@@ -28,7 +28,6 @@ export class PhotoService {
     photoFileName?: string,
   ): Promise<PhotoFetchResult> {
     try {
-      console.log('fetchClientPhoto called with photoFileName:', photoFileName)
       const token = sessionStorage.getItem('token')
 
       if (!token) {
@@ -125,7 +124,6 @@ export class PhotoService {
     file: File,
     clientData: unknown,
   ): Promise<PhotoUploadResult> {
-    console.log('uploadClientPhoto called with clientData:', clientData)
     try {
       const token = sessionStorage.getItem('token')
 

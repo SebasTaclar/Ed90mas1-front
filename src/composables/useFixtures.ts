@@ -1,30 +1,43 @@
 import { ref } from 'vue'
 import { matchesService, type Match, type CreateMatchRequest } from '@/services/matchesService'
 import { fixturesService } from '@/services/fixturesService'
-import type { FixtureConfiguration, Fixture } from '@/types/FixtureType'
+import type { FixtureConfiguration } from '@/types/FixtureType'
 
-// Función para convertir Fixture a Match
-const fixtureToMatch = (fixture: Fixture): Match => ({
-  id: fixture.id,
-  tournamentId: fixture.tournamentId,
-  groupId: fixture.groupId ? parseInt(fixture.groupId.toString()) : undefined,
-  homeTeamId: fixture.homeTeamId,
-  awayTeamId: fixture.awayTeamId,
-  scheduledDate: `${fixture.date}T${fixture.time}`,
-  venue: fixture.venue,
-  status:
-    fixture.status === 'scheduled'
-      ? 'scheduled'
-      : fixture.status === 'completed'
-        ? 'completed'
-        : fixture.status === 'cancelled'
-          ? 'cancelled'
-          : 'scheduled',
-  homeScore: fixture.homeScore,
-  awayScore: fixture.awayScore,
-  createdAt: fixture.createdAt,
-  updatedAt: fixture.updatedAt,
-})
+// Función para convertir Fixture a Match (o manejar si ya es Match)
+const fixtureToMatch = (fixture: any): Match => {
+  // Si ya tiene el formato de Match, devolverlo directamente
+  if (fixture.scheduledDate && !fixture.date) {
+    return fixture as Match
+  }
+
+  // Si es un Fixture, convertirlo a Match
+  return {
+    id: fixture.id,
+    tournamentId: fixture.tournamentId,
+    groupId: fixture.groupId ? parseInt(fixture.groupId.toString()) : undefined,
+    homeTeamId: fixture.homeTeamId,
+    awayTeamId: fixture.awayTeamId,
+    scheduledDate: fixture.scheduledDate || `${fixture.date}T${fixture.time}`,
+    location: fixture.location, // El backend usa location
+    venue: fixture.location || fixture.venue, // Para la UI, usar location como venue si está disponible
+    status:
+      fixture.status === 'scheduled'
+        ? 'scheduled'
+        : fixture.status === 'completed'
+          ? 'completed'
+          : fixture.status === 'cancelled'
+            ? 'cancelled'
+            : 'scheduled',
+    homeScore: fixture.homeScore,
+    awayScore: fixture.awayScore,
+    createdAt: fixture.createdAt,
+    updatedAt: fixture.updatedAt,
+    // Incluir información de equipos si está disponible
+    homeTeam: fixture.homeTeam,
+    awayTeam: fixture.awayTeam,
+    group: fixture.group,
+  } as Match
+}
 
 export const useFixtures = () => {
   const matches = ref<Match[]>([])
@@ -73,11 +86,15 @@ export const useFixtures = () => {
     error.value = null
 
     try {
-      // Usar el endpoint de fixtures POST para guardar la configuración completa
       const fixtureResponse = await fixturesService.saveFixtures(configuration)
 
+      if (!fixtureResponse || !fixtureResponse.data || !Array.isArray(fixtureResponse.data)) {
+        console.error('Respuesta inválida:', fixtureResponse)
+        throw new Error('Respuesta inválida del servidor: no se encontraron fixtures')
+      }
+
       // Convertir la respuesta de fixtures a matches para mantener compatibilidad
-      const convertedMatches = fixtureResponse.fixtures.map(fixtureToMatch)
+      const convertedMatches = fixtureResponse.data.map(fixtureToMatch)
       matches.value = convertedMatches
       return convertedMatches
     } catch (err) {

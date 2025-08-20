@@ -58,11 +58,6 @@
                 <label for="startDate">Fecha de Inicio *</label>
                 <input type="date" id="startDate" v-model="startDate" @change="updateDates" class="form-input" />
               </div>
-
-              <div class="input-group">
-                <label for="venue">Lugar (Opcional)</label>
-                <input type="text" id="venue" v-model="venue" placeholder="Ej: Estadio Principal" class="form-input" />
-              </div>
             </div>
           </div>
         </div>
@@ -84,12 +79,19 @@
               equipo
               asignado.</p>
           </div>
+          <div v-else-if="hasExistingMatches && fixtures.length > 0" class="info-card info">
+            <h4>🔒 Cronograma Existente</h4>
+            <p>Este torneo ya tiene un cronograma creado con {{ fixtures.length }} partidos.</p>
+            <p>La regeneración del cronograma está <strong>deshabilitada</strong> porque ya existen partidos
+              programados.</p>
+            <p>Puedes editar fechas, horarios y sedes de los partidos existentes, pero no crear un cronograma nuevo.</p>
+          </div>
           <div v-else-if="fixtures.length === 0" class="info-card warning">
             <h4>📋 Listo para Generar Cronograma</h4>
             <p>Este torneo tiene {{ tournamentTeams.length }} equipos disponibles:
               <strong>{{tournamentTeams.map(t => t.name).join(', ')}}</strong>
             </p>
-            <p>Haz clic en <strong>"🔄 Regenerar Cronograma"</strong> para generar los partidos automáticamente.
+            <p>Haz clic en <strong>"🔄 Inicializar Cronograma"</strong> para generar los partidos automáticamente.
               Luego podrás revisar, editar fechas/horarios y <strong>guardar cuando estés conforme</strong>.</p>
           </div>
           <div v-else-if="fixtures.length > 0" class="info-card success">
@@ -148,8 +150,8 @@
                       </div>
                       <div class="input-group">
                         <label>Sede</label>
-                        <input type="text" v-model="fixture.venue" placeholder="Sede del partido"
-                          class="form-input-small" />
+                        <input type="text" v-model="fixture.venue" @input="fixture.location = fixture.venue"
+                          placeholder="Calle 80" class="form-input-small" />
                       </div>
                     </div>
                   </div>
@@ -197,8 +199,8 @@
                     </div>
                     <div class="input-group">
                       <label>Sede</label>
-                      <input type="text" v-model="fixture.venue" placeholder="Sede del partido"
-                        class="form-input-small" />
+                      <input type="text" v-model="fixture.venue" @input="fixture.location = fixture.venue"
+                        placeholder="Calle 80" class="form-input-small" />
                     </div>
                   </div>
                 </div>
@@ -210,16 +212,16 @@
         <!-- Botones de acción -->
         <div class="popup-actions">
           <div class="action-buttons">
-            <button @click="regenerateFixtures" class="btn-secondary" :disabled="loading || tournamentTeams.length < 2">
-              🔄 Regenerar Cronograma
+            <button @click="regenerateFixtures" class="btn-secondary"
+              :disabled="loading || tournamentTeams.length < 2 || hasExistingMatches">
+              🔄 Inicializar Cronograma
             </button>
-            <button @click="setWeeklySchedule" class="btn-secondary" :disabled="loading || fixtures.length === 0">
-              📅 Programar Sábados
-            </button>
-            <button @click="clearFixtures" class="btn-warning" :disabled="loading || fixtures.length === 0">
+            <button @click="clearFixtures" class="btn-warning"
+              :disabled="loading || fixtures.length === 0 || hasExistingMatches">
               🗑️ Limpiar Cronograma
             </button>
-            <button @click="saveFixtures" class="btn-primary" :disabled="loading || fixtures.length === 0">
+            <button @click="saveFixtures" class="btn-primary"
+              :disabled="loading || fixtures.length === 0 || hasExistingMatches">
               <span v-if="loading">⏳ Guardando...</span>
               <span v-else>💾 Guardar Cronograma</span>
             </button>
@@ -232,9 +234,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import type { Tournament } from '@/types/TournamentType'
-import type { Team } from '@/types/TeamType'
 import { useFixtures } from '@/composables/useFixtures'
 import type { FixtureConfiguration } from '@/types/FixtureType'
 import type { Match } from '@/services/matchesService'
@@ -263,9 +263,6 @@ const emit = defineEmits<{
   save: [fixtures: FixtureConfiguration]
 }>()
 
-// Router para navegación
-const router = useRouter()
-
 // Composable para matches
 const { loadTournamentMatches, saveFixtures: saveApiFixtures } = useFixtures()
 
@@ -275,9 +272,9 @@ const { teams: allTeams, loadTeams } = useTeams()
 // Estado reactivo
 const loading = ref(false)
 const startDate = ref('')
-const venue = ref('')
 const fixtures = ref<FixtureWithTeams[]>([])
 const draggedFixture = ref<number | null>(null)
+const hasExistingMatches = ref(false)
 
 // Detectar automáticamente el tipo de fixture basado en la cantidad de grupos
 const suggestedFixtureType = computed(() => {
@@ -366,7 +363,8 @@ const generateRoundRobinFixtures = () => {
         homeTeamId: teams[i].id,
         awayTeamId: teams[j].id,
         scheduledDate: '',
-        venue: venue.value || 'Por definir',
+        venue: 'Calle 80', // UI usa venue
+        location: 'Calle 80', // Backend usa location
         homeTeam: teams[i],
         awayTeam: teams[j],
         status: 'scheduled'
@@ -389,7 +387,8 @@ const generateKnockoutFixtures = () => {
         homeTeamId: teams[i].id,
         awayTeamId: teams[i + 1].id,
         scheduledDate: '',
-        venue: venue.value || 'Por definir',
+        venue: 'Calle 80', // UI usa venue
+        location: 'Calle 80', // Backend usa location
         homeTeam: teams[i],
         awayTeam: teams[i + 1],
         status: 'scheduled'
@@ -418,7 +417,8 @@ const generateGroupStageFixtures = () => {
           homeTeamId: groupTeams[i].id,
           awayTeamId: groupTeams[j].id,
           scheduledDate: '',
-          venue: venue.value || 'Por definir',
+          venue: 'Calle 80', // UI usa venue
+          location: 'Calle 80', // Backend usa location
           homeTeam: groupTeams[i],
           awayTeam: groupTeams[j],
           status: 'scheduled',
@@ -431,22 +431,8 @@ const generateGroupStageFixtures = () => {
   fixtures.value = newFixtures
 }
 
-// Actualizar fechas automáticamente
+// Actualizar fechas automáticamente - 3 partidos por sábado
 const updateDates = () => {
-  if (!startDate.value || fixtures.value.length === 0) return
-
-  const start = new Date(startDate.value)
-
-  fixtures.value.forEach((fixture, index) => {
-    const fixtureDate = new Date(start)
-    fixtureDate.setDate(start.getDate() + (index * 7)) // Una semana entre partidos
-    fixtureDate.setHours(15, 0, 0, 0) // 15:00 por defecto
-    fixture.scheduledDate = fixtureDate.toISOString()
-  })
-}
-
-// Programar partidos los sábados
-const setWeeklySchedule = () => {
   if (!startDate.value || fixtures.value.length === 0) return
 
   const start = new Date(startDate.value)
@@ -457,9 +443,19 @@ const setWeeklySchedule = () => {
   nextSaturday.setDate(start.getDate() + daysUntilSaturday)
 
   fixtures.value.forEach((fixture, index) => {
+    // Calcular qué sábado corresponde (cada 3 partidos)
+    const saturdayIndex = Math.floor(index / 3)
+
+    // Crear la fecha para ese sábado
     const fixtureDate = new Date(nextSaturday)
-    fixtureDate.setDate(nextSaturday.getDate() + (index * 7)) // Cada sábado
-    fixtureDate.setHours(15, 0, 0, 0) // 15:00 los sábados
+    fixtureDate.setDate(nextSaturday.getDate() + (saturdayIndex * 7)) // Cada sábado
+
+    // Horarios: 15:00, 16:30, 18:00 para los 3 partidos del mismo sábado
+    const timeSlots = ['15:00:00', '16:30:00', '18:00:00']
+    const timeSlotIndex = index % 3
+    const [hours, minutes, seconds] = timeSlots[timeSlotIndex].split(':').map(Number)
+
+    fixtureDate.setHours(hours, minutes, Number(seconds), 0)
     fixture.scheduledDate = fixtureDate.toISOString()
   })
 }
@@ -499,11 +495,21 @@ const getGroupName = (groupId: number) => {
 
 // Regenerar fixtures
 const regenerateFixtures = () => {
+  // No permitir regenerar si ya existen partidos
+  if (hasExistingMatches.value) {
+    console.warn('No se puede regenerar el cronograma: ya existen partidos para este torneo')
+    return
+  }
   generateFixtures()
 }
 
 // Limpiar cronograma
 const clearFixtures = () => {
+  // No permitir limpiar si ya existen partidos guardados
+  if (hasExistingMatches.value) {
+    console.warn('No se puede limpiar el cronograma: ya existen partidos guardados para este torneo')
+    return
+  }
   fixtures.value = []
 }
 
@@ -519,13 +525,12 @@ const saveFixtures = async () => {
       tournamentId: props.tournamentData.id,
       fixtureType: fixtureType.value,
       startDate: startDate.value,
-      venue: venue.value,
       fixtures: fixtures.value.map(fixture => ({
         homeTeamId: fixture.homeTeamId,
         awayTeamId: fixture.awayTeamId,
         date: fixture.scheduledDate?.split('T')[0] || new Date().toISOString().split('T')[0],
         time: fixture.scheduledDate?.split('T')[1]?.slice(0, 8) || '15:00:00',
-        venue: fixture.venue || venue.value || 'Estadio Principal',
+        location: fixture.location || fixture.venue || 'Calle 80', // Priorizar location, fallback a venue
         groupId: fixture.groupId ? fixture.groupId.toString() : undefined,
         status: (fixture.status === 'scheduled' || fixture.status === 'completed' || fixture.status === 'cancelled')
           ? fixture.status : 'scheduled'
@@ -536,6 +541,9 @@ const saveFixtures = async () => {
     emit('save', fixtureConfiguration)
   } catch (error) {
     console.error('Error saving fixtures:', error)
+    // Mostrar un mensaje de error más descriptivo
+    const errorMessage = error instanceof Error ? error.message : 'Error desconocido al guardar cronograma'
+    alert(`Error al guardar el cronograma: ${errorMessage}`)
   } finally {
     loading.value = false
   }
@@ -551,11 +559,15 @@ const loadExistingFixtures = async () => {
     const existingMatches = await loadTournamentMatches(props.tournamentData.id)
 
     if (existingMatches && existingMatches.length > 0) {
+      // Marcar que ya existen partidos
+      hasExistingMatches.value = true
+
       // Los matches ya vienen con homeTeam y awayTeam desde el backend
       fixtures.value = existingMatches.map(match => ({
         ...match,
         scheduledDate: match.matchDate, // Usar matchDate como scheduledDate para la UI
-        venue: match.location || 'Por definir', // Usar location como venue
+        venue: match.location || 'Calle 80', // UI usa venue desde location del backend
+        location: match.location || 'Calle 80', // Mantener location para el backend
         homeTeam: match.homeTeam ? {
           id: match.homeTeam.id,
           name: match.homeTeam.name,
@@ -574,20 +586,20 @@ const loadExistingFixtures = async () => {
       if (fixtures.value.length > 0) {
         const firstMatch = fixtures.value[0]
         startDate.value = firstMatch.scheduledDate?.split('T')[0] || ''
-        venue.value = firstMatch.venue || ''
       }
     } else {
+      // No hay partidos existentes
+      hasExistingMatches.value = false
+
       // Configurar valores por defecto
       const today = new Date()
       startDate.value = today.toISOString().split('T')[0]
-      venue.value = 'Estadio Principal'
     }
   } catch (error) {
     console.error('Error cargando matches:', error)
     // Configurar valores por defecto en caso de error
     const today = new Date()
     startDate.value = today.toISOString().split('T')[0]
-    venue.value = 'Estadio Principal'
   } finally {
     loading.value = false
   }

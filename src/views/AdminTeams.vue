@@ -201,7 +201,6 @@ const handleDelete = async () => {
     // Primero intentar eliminar el logo si existe
     if (teamToDelete.value.logoPath) {
       try {
-        console.log('Eliminando logo del equipo...')
         await deleteTeamLogo(teamToDelete.value.id)
       } catch (logoError) {
         console.warn('No se pudo eliminar el logo del equipo:', logoError)
@@ -211,11 +210,9 @@ const handleDelete = async () => {
 
     // Luego eliminar el equipo
     const result = await deleteTeam(teamToDelete.value.id)
-    if (result.success) {
-      console.log('Equipo eliminado exitosamente')
-    } else {
+    if (!result.success)
       alert('Error al eliminar el equipo: ' + result.message)
-    }
+
   } catch (error) {
     console.error('Error deleting team:', error)
     alert('Error interno al eliminar el equipo')

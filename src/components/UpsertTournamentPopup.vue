@@ -315,15 +315,9 @@ const handleSubmit = async () => {
       // Si hay un archivo seleccionado, subirlo
       if (selectedFile.value && result.tournament?.id) {
         try {
-          const bannerResult = await uploadTournamentBanner(result.tournament.id, selectedFile.value)
-          if (bannerResult.success) {
-            console.log('Banner subido exitosamente')
-          } else {
-            console.warn('Error al subir banner:', bannerResult.message)
-          }
+          await uploadTournamentBanner(result.tournament.id, selectedFile.value)
         } catch (bannerError) {
           console.warn('Error al subir banner:', bannerError)
-          // No detenemos el flujo si falla la subida del banner
         }
       }
 
@@ -420,12 +414,9 @@ const handleDeleteBanner = async () => {
     loading.value = true
     const result = await deleteTournamentBanner(tournamentData.id)
 
-    if (result.success) {
+    if (result.success)
       currentBanner.value = null
-      console.log('Banner eliminado exitosamente')
-    } else {
-      console.error('Error al eliminar banner:', result.message)
-    }
+
   } catch (error) {
     console.error('Error al eliminar banner:', error)
   } finally {

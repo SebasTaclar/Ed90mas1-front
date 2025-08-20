@@ -13,7 +13,7 @@ export interface Fixture {
   }
   date: string
   time: string
-  venue?: string
+  location?: string // Cambiar venue por location para coincidir con el backend
   round?: number | string
   group?: string
   groupId?: string
@@ -28,7 +28,7 @@ export interface FixtureConfiguration {
   tournamentId: number
   fixtureType: 'round_robin' | 'knockout' | 'group_stage'
   startDate: string
-  venue?: string
+  location?: string // Cambiar venue por location
   fixtures: Omit<Fixture, 'id' | 'tournamentId'>[]
 }
 
@@ -36,11 +36,13 @@ export interface FixtureGenerationRequest {
   tournamentId: number
   fixtureType: 'round_robin' | 'knockout' | 'group_stage'
   startDate: string
-  venue?: string
+  location?: string // Cambiar venue por location
 }
 
 export interface FixtureResponse {
-  fixtures: Fixture[]
-  totalMatches: number
-  tournamentId: number
+  success: boolean
+  message: string
+  data: any[] // Flexible para manejar tanto Fixtures como Matches
+  timestamp: string
+  statusCode: number
 }
