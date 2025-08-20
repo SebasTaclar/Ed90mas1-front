@@ -18,7 +18,7 @@
             <span class="away-score">{{ awayScore }}</span>
           </div>
           <div class="match-time">
-            <span class="time-display" :class="{ 'live': isMatchLive }">{{ formattedTime }}</span>
+            <span class="period-display" :class="{ 'live': isMatchLive }">{{ currentPeriod }}</span>
             <span class="match-status">{{ matchStatus }}</span>
           </div>
         </div>
@@ -26,15 +26,50 @@
 
       <!-- Controles del partido -->
       <div class="match-controls">
-        <button v-if="!isMatchLive && !isMatchFinished" @click="startMatch" class="control-btn start-btn">
-          ▶️ Iniciar
+        <!-- No iniciado -->
+        <button v-if="matchPeriod === 'not_started'" @click="startFirstHalf" class="control-btn start-btn">
+          ⚽ Iniciar Primer Tiempo
         </button>
-        <button v-if="isMatchLive" @click="pauseMatch" class="control-btn pause-btn">
-          ⏸️ Pausar
+
+        <!-- Primer tiempo en curso -->
+        <button v-if="matchPeriod === 'first_half'" @click="endFirstHalf" class="control-btn pause-btn">
+          ⏸️ Finalizar Primer Tiempo
         </button>
-        <button v-if="isMatchLive" @click="endMatch" class="control-btn end-btn">
-          🏁 Finalizar
+
+        <!-- Descanso -->
+        <button v-if="matchPeriod === 'half_time'" @click="startSecondHalf" class="control-btn start-btn">
+          ⚽ Iniciar Segundo Tiempo
         </button>
+
+        <!-- Segundo tiempo en curso -->
+        <div v-if="matchPeriod === 'second_half'" class="control-group">
+          <button @click="endSecondHalf" class="control-btn end-btn">
+            🏁 Finalizar Segundo Tiempo
+          </button>
+          <button @click="finishMatch" class="control-btn finish-btn">
+            ✅ Finalizar Partido
+          </button>
+        </div>
+
+        <!-- Tiempo extra -->
+        <div v-if="matchPeriod === 'extra_time'" class="control-group">
+          <button @click="finishMatch" class="control-btn finish-btn">
+            ✅ Finalizar Partido
+          </button>
+          <button @click="startPenalties" class="control-btn penalty-btn">
+            🥅 Ir a Penaltis
+          </button>
+        </div>
+
+        <!-- Penaltis -->
+        <button v-if="matchPeriod === 'penalties'" @click="finishMatch" class="control-btn finish-btn">
+          ✅ Finalizar Partido
+        </button>
+
+        <!-- Finalizado -->
+        <span v-if="matchPeriod === 'finished'" class="control-btn finished-btn">
+          🏆 Partido Finalizado
+        </span>
       </div>
     </div>
 
@@ -222,27 +257,40 @@ const loading = ref(true)
 const matchData = ref<SimpleMatchData | null>(null)
 const homeScore = ref(0)
 const awayScore = ref(0)
-const matchTime = ref(0) // en segundos
-const isMatchLive = ref(false)
-const isMatchFinished = ref(false)
+const matchPeriod = ref<'not_started' | 'first_half' | 'half_time' | 'second_half' | 'extra_time' | 'penalties' | 'finished'>('not_started')
 const matchEvents = ref<MatchEvent[]>([])
 const selectedPlayer = ref<Player | null>(null)
 const selectedTeam = ref<'home' | 'away' | null>(null)
 
-// Timer para el tiempo del partido
-let matchTimer: ReturnType<typeof setInterval> | null = null
-
 // Computed properties
-const formattedTime = computed(() => {
-  const minutes = Math.floor(matchTime.value / 60)
-  const seconds = matchTime.value % 60
-  return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+const currentPeriod = computed(() => {
+  switch (matchPeriod.value) {
+    case 'not_started': return 'NO INICIADO'
+    case 'first_half': return 'PRIMER TIEMPO'
+    case 'half_time': return 'DESCANSO'
+    case 'second_half': return 'SEGUNDO TIEMPO'
+    case 'extra_time': return 'TIEMPO EXTRA'
+    case 'penalties': return 'PENALTIS'
+    case 'finished': return 'FINALIZADO'
+    default: return 'NO INICIADO'
+  }
 })
 
 const matchStatus = computed(() => {
-  if (isMatchFinished.value) return 'FINALIZADO'
-  if (isMatchLive.value) return 'EN VIVO'
-  return 'NO INICIADO'
+  switch (matchPeriod.value) {
+    case 'not_started': return 'POR INICIAR'
+    case 'first_half':
+    case 'second_half':
+    case 'extra_time':
+    case 'penalties': return 'EN VIVO'
+    case 'half_time': return 'DESCANSO'
+    case 'finished': return 'FINALIZADO'
+    default: return 'POR INICIAR'
+  }
+})
+
+const isMatchLive = computed(() => {
+  return ['first_half', 'second_half', 'extra_time', 'penalties'].includes(matchPeriod.value)
 })
 
 const homeAttendingPlayers = computed((): Player[] => {
@@ -287,34 +335,64 @@ const handlePhotoError = (event: Event) => {
 }
 
 const goBack = () => {
-  if (matchTimer) {
-    clearInterval(matchTimer)
-  }
   router.back()
 }
 
-// Funciones del partido
-const startMatch = () => {
-  isMatchLive.value = true
-  matchTimer = setInterval(() => {
-    matchTime.value++
-  }, 1000)
-}
+// Funciones de control del partido
+const updateMatchStatus = async (status: string, period: string) => {
+  if (!matchData.value) return false
 
-const pauseMatch = () => {
-  isMatchLive.value = false
-  if (matchTimer) {
-    clearInterval(matchTimer)
-    matchTimer = null
+  try {
+    await matchesService.updateMatch(matchData.value.matchId, {
+      status: status as any,
+      // Podemos agregar más campos según la estructura de tu API
+    })
+    return true
+  } catch (error) {
+    console.error('Error updating match status:', error)
+    return false
   }
 }
 
-const endMatch = () => {
-  isMatchLive.value = false
-  isMatchFinished.value = true
-  if (matchTimer) {
-    clearInterval(matchTimer)
-    matchTimer = null
+const startFirstHalf = async () => {
+  const success = await updateMatchStatus('in_progress', 'first_half')
+  if (success) {
+    matchPeriod.value = 'first_half'
+  }
+}
+
+const endFirstHalf = async () => {
+  const success = await updateMatchStatus('in_progress', 'half_time')
+  if (success) {
+    matchPeriod.value = 'half_time'
+  }
+}
+
+const startSecondHalf = async () => {
+  const success = await updateMatchStatus('in_progress', 'second_half')
+  if (success) {
+    matchPeriod.value = 'second_half'
+  }
+}
+
+const endSecondHalf = async () => {
+  const success = await updateMatchStatus('in_progress', 'extra_time')
+  if (success) {
+    matchPeriod.value = 'extra_time'
+  }
+}
+
+const startPenalties = async () => {
+  const success = await updateMatchStatus('in_progress', 'penalties')
+  if (success) {
+    matchPeriod.value = 'penalties'
+  }
+}
+
+const finishMatch = async () => {
+  const success = await updateMatchStatus('completed', 'finished')
+  if (success) {
+    matchPeriod.value = 'finished'
   }
 }
 
@@ -373,7 +451,25 @@ const deleteEventFromDatabase = async (dbEventId: number): Promise<boolean> => {
 const addEvent = async (eventType: 'goal' | 'yellow_card' | 'red_card' | 'substitution') => {
   if (!selectedPlayer.value || !selectedTeam.value || !matchData.value) return
 
-  const currentMinute = Math.floor(matchTime.value / 60)
+  // Calcular el minuto basado en el período actual
+  let currentMinute = 0
+  switch (matchPeriod.value) {
+    case 'first_half':
+      currentMinute = Math.floor(Math.random() * 45) + 1 // 1-45 minutos
+      break
+    case 'second_half':
+      currentMinute = Math.floor(Math.random() * 45) + 46 // 46-90 minutos
+      break
+    case 'extra_time':
+      currentMinute = Math.floor(Math.random() * 30) + 91 // 91-120 minutos
+      break
+    case 'penalties':
+      currentMinute = 120 // Penaltis se registran en minuto 120
+      break
+    default:
+      currentMinute = 1
+  }
+
   const teamData = selectedTeam.value === 'home' ? matchData.value.homeTeam : matchData.value.awayTeam
 
   const event: MatchEvent = {
@@ -618,6 +714,17 @@ const loadMatchData = async () => {
       attendingPlayers: match.attendingPlayers
     }
 
+    // Establecer el período del partido basado en el estado de la BD
+    if (match.status === 'completed') {
+      matchPeriod.value = 'finished'
+    } else if (match.status === 'in_progress') {
+      // Aquí podrías tener lógica más específica basada en otros campos
+      // Por ahora, asumimos que si está en progreso, está en segundo tiempo
+      matchPeriod.value = 'second_half'
+    } else {
+      matchPeriod.value = 'not_started'
+    }
+
     // Cargar eventos existentes del partido
     await loadMatchEvents(matchId)
 
@@ -650,9 +757,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  if (matchTimer) {
-    clearInterval(matchTimer)
-  }
+  // Ya no hay timer que limpiar
 })
 </script>
 
@@ -743,7 +848,17 @@ onUnmounted(() => {
   transition: all 0.3s ease;
 }
 
-.time-display.live {
+.period-display {
+  font-size: 1.2rem;
+  font-weight: bold;
+  padding: 0.5rem 1rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 0.5rem;
+  border: 2px solid transparent;
+  transition: all 0.3s ease;
+}
+
+.period-display.live {
   border-color: #ef4444;
   background: rgba(239, 68, 68, 0.2);
   animation: pulse 2s infinite;
@@ -770,6 +885,13 @@ onUnmounted(() => {
 }
 
 .match-controls {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.control-group {
   display: flex;
   gap: 0.5rem;
 }
@@ -809,6 +931,35 @@ onUnmounted(() => {
 
 .end-btn:hover {
   background: #dc2626;
+}
+
+.finish-btn {
+  background: #059669;
+  color: white;
+}
+
+.finish-btn:hover {
+  background: #047857;
+}
+
+.penalty-btn {
+  background: #7c3aed;
+  color: white;
+}
+
+.penalty-btn:hover {
+  background: #6d28d9;
+}
+
+.finished-btn {
+  background: rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+  border: 2px solid #22c55e;
+  cursor: default;
+}
+
+.finished-btn:hover {
+  background: rgba(34, 197, 94, 0.2);
 }
 
 .teams-container {

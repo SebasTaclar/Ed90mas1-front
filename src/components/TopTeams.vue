@@ -32,7 +32,7 @@ import { ref } from 'vue'
 const topTeams = ref([
   {
     name: 'FC Barcelona',
-    logo: '/images/teams/barcelona.png',
+    logo: '/images/logo.png', // Imagen temporal hasta tener los logos reales
     stats: '28 Pts • Liga Líder',
     wins: 9,
     draws: 1,
@@ -40,7 +40,7 @@ const topTeams = ref([
   },
   {
     name: 'Real Madrid',
-    logo: '/images/teams/realmadrid.png',
+    logo: '/images/logo.png', // Imagen temporal hasta tener los logos reales
     stats: '25 Pts • Subcampeón',
     wins: 8,
     draws: 1,
@@ -48,7 +48,7 @@ const topTeams = ref([
   },
   {
     name: 'Atlético Madrid',
-    logo: '/images/teams/atletico.png',
+    logo: '/images/logo.png', // Imagen temporal hasta tener los logos reales
     stats: '22 Pts • 3er Lugar',
     wins: 7,
     draws: 1,
@@ -56,7 +56,7 @@ const topTeams = ref([
   },
   {
     name: 'Manchester City',
-    logo: '/images/teams/city.png',
+    logo: '/images/logo.png', // Imagen temporal hasta tener los logos reales
     stats: '21 Pts • Premier League',
     wins: 7,
     draws: 0,
@@ -64,7 +64,7 @@ const topTeams = ref([
   },
   {
     name: 'Bayern Munich',
-    logo: '/images/teams/bayern.png',
+    logo: '/images/logo.png', // Imagen temporal hasta tener los logos reales
     stats: '20 Pts • Bundesliga',
     wins: 6,
     draws: 2,
@@ -72,7 +72,7 @@ const topTeams = ref([
   },
   {
     name: 'PSG',
-    logo: '/images/teams/psg.png',
+    logo: '/images/logo.png', // Imagen temporal hasta tener los logos reales
     stats: '19 Pts • Ligue 1',
     wins: 6,
     draws: 1,
@@ -80,7 +80,7 @@ const topTeams = ref([
   },
   {
     name: 'Liverpool',
-    logo: '/images/teams/liverpool.png',
+    logo: '/images/logo.png', // Imagen temporal hasta tener los logos reales
     stats: '18 Pts • Premier League',
     wins: 6,
     draws: 0,
@@ -88,7 +88,7 @@ const topTeams = ref([
   },
   {
     name: 'Juventus',
-    logo: '/images/teams/juventus.png',
+    logo: '/images/logo.png', // Imagen temporal hasta tener los logos reales
     stats: '17 Pts • Serie A',
     wins: 5,
     draws: 2,
@@ -96,7 +96,7 @@ const topTeams = ref([
   },
   {
     name: 'Chelsea',
-    logo: '/images/teams/chelsea.png',
+    logo: '/images/logo.png', // Imagen temporal hasta tener los logos reales
     stats: '16 Pts • Premier League',
     wins: 5,
     draws: 1,
@@ -104,7 +104,7 @@ const topTeams = ref([
   },
   {
     name: 'AC Milan',
-    logo: '/images/teams/milan.png',
+    logo: '/images/logo.png', // Imagen temporal hasta tener los logos reales
     stats: '15 Pts • Serie A',
     wins: 5,
     draws: 0,
