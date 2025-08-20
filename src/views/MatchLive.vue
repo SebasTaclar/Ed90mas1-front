@@ -32,27 +32,27 @@
         </button>
 
         <!-- Primer tiempo en curso -->
-        <button v-if="matchPeriod === 'first_half'" @click="endFirstHalf" class="control-btn pause-btn">
+        <button v-if="matchPeriod === 'in_progress_1_half'" @click="endFirstHalf" class="control-btn pause-btn">
           ⏸️ Finalizar Primer Tiempo
         </button>
 
         <!-- Descanso -->
-        <button v-if="matchPeriod === 'half_time'" @click="startSecondHalf" class="control-btn start-btn">
+        <button v-if="matchPeriod === 'finished_1_half'" @click="startSecondHalf" class="control-btn start-btn">
           ⚽ Iniciar Segundo Tiempo
         </button>
 
         <!-- Segundo tiempo en curso -->
-        <div v-if="matchPeriod === 'second_half'" class="control-group">
-          <button @click="endSecondHalf" class="control-btn end-btn">
-            🏁 Finalizar Segundo Tiempo
+        <div v-if="matchPeriod === 'in_progress_2_half'" class="control-group">
+          <button @click="endSecondHalf" class="control-btn pause-btn">
+            ⏸️ Finalizar Segundo Tiempo
           </button>
           <button @click="finishMatch" class="control-btn finish-btn">
             ✅ Finalizar Partido
           </button>
         </div>
 
-        <!-- Tiempo extra -->
-        <div v-if="matchPeriod === 'extra_time'" class="control-group">
+        <!-- Segundo tiempo finalizado -->
+        <div v-if="matchPeriod === 'finished_2_half'" class="control-group">
           <button @click="finishMatch" class="control-btn finish-btn">
             ✅ Finalizar Partido
           </button>
@@ -70,6 +70,12 @@
         <span v-if="matchPeriod === 'finished'" class="control-btn finished-btn">
           🏆 Partido Finalizado
         </span>
+
+        <!-- Botón de reiniciar - siempre visible excepto cuando no iniciado -->
+        <button v-if="matchPeriod !== 'not_started'" @click="showRestartConfirmation = true"
+          class="control-btn restart-btn">
+          🔄 Reiniciar Partido
+        </button>
       </div>
     </div>
 
@@ -209,6 +215,12 @@
       <div class="spinner"></div>
       <p>Cargando información del partido...</p>
     </div>
+
+    <!-- Modal de confirmación para reiniciar -->
+    <ConfirmationModal v-if="showRestartConfirmation" title="¿Reiniciar Partido?"
+      message="Esta acción eliminará todos los eventos y reiniciará el partido al estado inicial. Esta acción no se puede deshacer."
+      confirm-text="Sí, Reiniciar" cancel-text="Cancelar" :danger="true" @confirm="confirmRestartMatch"
+      @cancel="showRestartConfirmation = false" />
   </div>
 </template>
 
@@ -219,6 +231,7 @@ import { matchesService } from '@/services/matchesService'
 import { matchEventsService, MatchEventType } from '@/services/matchEventsService'
 import { playerService } from '@/services/api/playerService'
 import type { Player } from '@/types/PlayerType'
+import ConfirmationModal from '@/components/ConfirmationModal.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -257,19 +270,20 @@ const loading = ref(true)
 const matchData = ref<SimpleMatchData | null>(null)
 const homeScore = ref(0)
 const awayScore = ref(0)
-const matchPeriod = ref<'not_started' | 'first_half' | 'half_time' | 'second_half' | 'extra_time' | 'penalties' | 'finished'>('not_started')
+const matchPeriod = ref<'not_started' | 'in_progress_1_half' | 'finished_1_half' | 'in_progress_2_half' | 'finished_2_half' | 'penalties' | 'finished'>('not_started')
 const matchEvents = ref<MatchEvent[]>([])
 const selectedPlayer = ref<Player | null>(null)
 const selectedTeam = ref<'home' | 'away' | null>(null)
+const showRestartConfirmation = ref(false)
 
 // Computed properties
 const currentPeriod = computed(() => {
   switch (matchPeriod.value) {
     case 'not_started': return 'NO INICIADO'
-    case 'first_half': return 'PRIMER TIEMPO'
-    case 'half_time': return 'DESCANSO'
-    case 'second_half': return 'SEGUNDO TIEMPO'
-    case 'extra_time': return 'TIEMPO EXTRA'
+    case 'in_progress_1_half': return '1er TIEMPO - EN JUEGO'
+    case 'finished_1_half': return 'DESCANSO'
+    case 'in_progress_2_half': return '2do TIEMPO - EN JUEGO'
+    case 'finished_2_half': return '2do TIEMPO - FINALIZADO'
     case 'penalties': return 'PENALTIS'
     case 'finished': return 'FINALIZADO'
     default: return 'NO INICIADO'
@@ -279,19 +293,27 @@ const currentPeriod = computed(() => {
 const matchStatus = computed(() => {
   switch (matchPeriod.value) {
     case 'not_started': return 'POR INICIAR'
-    case 'first_half':
-    case 'second_half':
-    case 'extra_time':
+    case 'in_progress_1_half':
+    case 'in_progress_2_half':
     case 'penalties': return 'EN VIVO'
-    case 'half_time': return 'DESCANSO'
+    case 'finished_1_half': return 'DESCANSO'
+    case 'finished_2_half': return 'TIEMPO REGULAR FINALIZADO'
     case 'finished': return 'FINALIZADO'
     default: return 'POR INICIAR'
   }
 })
 
 const isMatchLive = computed(() => {
-  return ['first_half', 'second_half', 'extra_time', 'penalties'].includes(matchPeriod.value)
+  return ['in_progress_1_half', 'in_progress_2_half', 'penalties'].includes(matchPeriod.value)
 })
+
+// Computed para controlar qué botones están habilitados
+const canStartFirstHalf = computed(() => matchPeriod.value === 'not_started')
+const canEndFirstHalf = computed(() => matchPeriod.value === 'in_progress_1_half')
+const canStartSecondHalf = computed(() => matchPeriod.value === 'finished_1_half')
+const canEndSecondHalf = computed(() => matchPeriod.value === 'in_progress_2_half')
+const canStartPenalties = computed(() => matchPeriod.value === 'finished_2_half')
+const canFinishMatch = computed(() => ['finished_2_half', 'penalties'].includes(matchPeriod.value))
 
 const homeAttendingPlayers = computed((): Player[] => {
   if (!matchData.value?.attendingPlayers) return []
@@ -355,30 +377,30 @@ const updateMatchStatus = async (status: string, period: string) => {
 }
 
 const startFirstHalf = async () => {
-  const success = await updateMatchStatus('in_progress', 'first_half')
+  const success = await updateMatchStatus('in_progress', 'in_progress_1_half')
   if (success) {
-    matchPeriod.value = 'first_half'
+    matchPeriod.value = 'in_progress_1_half'
   }
 }
 
 const endFirstHalf = async () => {
-  const success = await updateMatchStatus('in_progress', 'half_time')
+  const success = await updateMatchStatus('in_progress', 'finished_1_half')
   if (success) {
-    matchPeriod.value = 'half_time'
+    matchPeriod.value = 'finished_1_half'
   }
 }
 
 const startSecondHalf = async () => {
-  const success = await updateMatchStatus('in_progress', 'second_half')
+  const success = await updateMatchStatus('in_progress', 'in_progress_2_half')
   if (success) {
-    matchPeriod.value = 'second_half'
+    matchPeriod.value = 'in_progress_2_half'
   }
 }
 
 const endSecondHalf = async () => {
-  const success = await updateMatchStatus('in_progress', 'extra_time')
+  const success = await updateMatchStatus('in_progress', 'finished_2_half')
   if (success) {
-    matchPeriod.value = 'extra_time'
+    matchPeriod.value = 'finished_2_half'
   }
 }
 
@@ -394,6 +416,32 @@ const finishMatch = async () => {
   if (success) {
     matchPeriod.value = 'finished'
   }
+}
+
+const confirmRestartMatch = async () => {
+  const success = await updateMatchStatus('scheduled', 'not_started')
+  if (success) {
+    // Limpiar todos los eventos del partido
+    matchEvents.value = []
+    // Limpiar scores
+    homeScore.value = 0
+    awayScore.value = 0
+    // Resetear período
+    matchPeriod.value = 'not_started'
+
+    // Aquí podrías agregar lógica para eliminar eventos de la BD
+    try {
+      // Eliminar todos los eventos del partido de la base de datos
+      for (const event of matchEvents.value) {
+        if (event.dbId && typeof event.dbId === 'number' && matchData.value) {
+          await matchEventsService.deleteMatchEvent(matchData.value.matchId, event.dbId)
+        }
+      }
+    } catch (error) {
+      console.error('Error deleting match events:', error)
+    }
+  }
+  showRestartConfirmation.value = false
 }
 
 // Funciones de jugadores y eventos
@@ -454,14 +502,11 @@ const addEvent = async (eventType: 'goal' | 'yellow_card' | 'red_card' | 'substi
   // Calcular el minuto basado en el período actual
   let currentMinute = 0
   switch (matchPeriod.value) {
-    case 'first_half':
+    case 'in_progress_1_half':
       currentMinute = Math.floor(Math.random() * 45) + 1 // 1-45 minutos
       break
-    case 'second_half':
+    case 'in_progress_2_half':
       currentMinute = Math.floor(Math.random() * 45) + 46 // 46-90 minutos
-      break
-    case 'extra_time':
-      currentMinute = Math.floor(Math.random() * 30) + 91 // 91-120 minutos
       break
     case 'penalties':
       currentMinute = 120 // Penaltis se registran en minuto 120
@@ -720,7 +765,7 @@ const loadMatchData = async () => {
     } else if (match.status === 'in_progress') {
       // Aquí podrías tener lógica más específica basada en otros campos
       // Por ahora, asumimos que si está en progreso, está en segundo tiempo
-      matchPeriod.value = 'second_half'
+      matchPeriod.value = 'in_progress_2_half'
     } else {
       matchPeriod.value = 'not_started'
     }
@@ -904,6 +949,21 @@ onUnmounted(() => {
   cursor: pointer;
   transition: all 0.3s ease;
   font-size: 0.9rem;
+  min-width: 160px;
+  white-space: nowrap;
+}
+
+.control-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.control-btn:disabled:hover {
+  background: inherit;
+  transform: none;
+  box-shadow: none;
 }
 
 .start-btn {
@@ -960,6 +1020,19 @@ onUnmounted(() => {
 
 .finished-btn:hover {
   background: rgba(34, 197, 94, 0.2);
+}
+
+.restart-btn {
+  background: #f59e0b;
+  color: white;
+  border: 2px solid transparent;
+}
+
+.restart-btn:hover:not(:disabled) {
+  background: #d97706;
+  border-color: #92400e;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
 }
 
 .teams-container {
@@ -1356,6 +1429,17 @@ onUnmounted(() => {
     gap: 1rem;
     padding: 2rem 1rem 1rem 1rem;
     margin-top: 1.5rem;
+  }
+
+  .controls-row {
+    flex-direction: column;
+    width: 100%;
+    gap: 0.5rem;
+  }
+
+  .control-btn {
+    width: 100%;
+    min-width: auto;
   }
 
   .match-controls {
