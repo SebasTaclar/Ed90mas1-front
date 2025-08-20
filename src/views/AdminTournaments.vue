@@ -21,20 +21,24 @@
         <div class="filters">
           <div class="filter-group">
             <label for="statusFilter">Filtrar por estado:</label>
-            <select id="statusFilter" v-model="selectedStatusFilter" class="form-select">
-              <option value="">Todos los torneos</option>
-              <option value="active">Activos</option>
-              <option value="inactive">Inactivos</option>
-            </select>
+            <div class="form-select">
+              <select id="statusFilter" v-model="selectedStatusFilter">
+                <option value="">Todos los torneos</option>
+                <option value="active">Activos</option>
+                <option value="inactive">Inactivos</option>
+              </select>
+            </div>
           </div>
           <div class="filter-group">
             <label for="categoryFilter">Filtrar por categoría:</label>
-            <select id="categoryFilter" v-model="selectedCategoryFilter" class="form-select">
-              <option value="">Todas las categorías</option>
-              <option v-for="category in categories" :key="category.id" :value="category.id">
-                {{ category.name }}
-              </option>
-            </select>
+            <div class="form-select">
+              <select id="categoryFilter" v-model="selectedCategoryFilter">
+                <option value="">Todas las categorías</option>
+                <option v-for="category in categories" :key="category.id" :value="category.id">
+                  {{ category.name }}
+                </option>
+              </select>
+            </div>
           </div>
         </div>
       </div>
@@ -43,11 +47,14 @@
       <div class="tournaments-list-section">
         <div class="section-header">
           <h2>Torneos Registrados</h2>
-          <div class="tournaments-count">{{ tournaments?.length || 0 }} torneos</div>
+          <div class="tournaments-count">{{ initialLoading ? '...' : (tournaments?.length || 0) }} torneos</div>
         </div>
 
+        <!-- Spinner mientras carga -->
+        <Spinner v-if="initialLoading" />
+
         <!-- Tabla de torneos -->
-        <div class="tournaments-table-container">
+        <div v-else class="tournaments-table-container">
           <table class="tournaments-table">
             <thead>
               <tr>
@@ -70,7 +77,7 @@
                   <div class="categories-list">
                     <span v-for="tournamentCategory in tournament.tournamentCategories" :key="tournamentCategory.id"
                       class="category-badge">
-                      {{ tournamentCategory.category.name }}
+                      {{ getCategoryName(tournamentCategory.categoryId) }}
                     </span>
                     <span v-if="!tournament.tournamentCategories || tournament.tournamentCategories.length === 0"
                       class="no-categories">
@@ -210,6 +217,7 @@ const {
 } = useTournamentConfiguration()
 const { success, error } = useNotifications()
 const loading = ref(false)
+const initialLoading = ref(true)
 const selectedStatusFilter = ref<string>('')
 const selectedCategoryFilter = ref<string>('')
 
@@ -245,7 +253,7 @@ const filteredTournaments = computed(() => {
   if (selectedCategoryFilter.value) {
     filtered = filtered.filter(tournament =>
       tournament.tournamentCategories?.some(tc =>
-        tc.categoryId.toString() === selectedCategoryFilter.value
+        tc.categoryId === Number(selectedCategoryFilter.value)
       )
     )
   }
@@ -255,9 +263,27 @@ const filteredTournaments = computed(() => {
 
 // Funciones
 const loadData = async () => {
-  await loadTournaments()
-  await loadCategories()
-  await loadTeams() // Agregamos la carga de equipos
+  try {
+    // Cargar todos los datos en paralelo
+    const results = await Promise.allSettled([
+      loadTournaments(),
+      loadCategories(),
+      loadTeams()
+    ])
+
+    // Verificar si alguna carga falló y reportar errores
+    results.forEach((result, index) => {
+      const names = ['Torneos', 'Categorías', 'Equipos']
+      if (result.status === 'rejected') {
+        console.error(`Error cargando ${names[index]}:`, result.reason)
+      }
+    })
+
+  } catch (err) {
+    console.error('Error loading data:', err)
+  } finally {
+    initialLoading.value = false
+  }
 }
 
 const openCreateModal = () => {
@@ -323,7 +349,7 @@ const closeFixturesModal = () => {
   selectedTournament.value = null
 }
 
-const handleFixturesSave = async (fixturesData: any) => {
+const handleFixturesSave = async () => {
   if (selectedTournament.value && selectedTournament.value.id) {
     try {
       loading.value = true
@@ -480,6 +506,12 @@ const formatDate = (dateString: string): string => {
   })
 }
 
+// Función para obtener el nombre de la categoría desde la lista cargada
+const getCategoryName = (categoryId: number): string => {
+  const category = categories.value?.find(cat => cat.id === categoryId)
+  return category?.name || 'Categoría no encontrada'
+}
+
 onMounted(async () => {
   await loadData()
 })
@@ -602,7 +634,34 @@ onMounted(async () => {
   min-width: 150px;
 }
 
-.form-select:focus {
+/* Estilos específicos para select dentro del contenedor form-select */
+.form-select select {
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--app-text-primary);
+  font-size: inherit;
+  width: 100%;
+  cursor: pointer;
+}
+
+.form-select select:focus {
+  outline: none;
+}
+
+.form-select select option {
+  background: var(--app-bg-primary);
+  color: var(--app-text-primary);
+  padding: 0.5rem 0.75rem;
+  font-weight: 500;
+}
+
+.form-select select option:hover {
+  background: var(--primary-blue);
+  color: var(--white);
+}
+
+.form-select:focus-within {
   outline: none;
   border-color: var(--primary-blue);
   box-shadow: 0 0 0 3px rgba(0, 94, 180, 0.1);
@@ -612,6 +671,8 @@ onMounted(async () => {
   background: var(--app-bg-secondary);
   border-radius: var(--border-radius-lg);
   padding: 2rem;
+  margin-top: 2rem;
+  /* Agregamos espacio arriba */
   box-shadow: var(--app-shadow);
   border: 1px solid var(--app-border-color);
 }

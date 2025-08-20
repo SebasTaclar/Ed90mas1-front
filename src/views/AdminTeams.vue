@@ -27,74 +27,79 @@
       <div class="teams-list-section">
         <div class="section-header">
           <h2>Equipos Registrados</h2>
-          <div class="teams-count">{{ teams.length }} equipos</div>
+          <div class="teams-count">{{ initialLoading ? '...' : teams.length }} equipos</div>
         </div>
 
         <!-- Filtros -->
         <div class="filters">
           <div class="filter-group">
-            <span>Total: {{ teams.length }} equipos</span>
+            <span>Total: {{ initialLoading ? '...' : teams.length }} equipos</span>
           </div>
         </div>
+
+        <!-- Spinner mientras carga -->
+        <Spinner v-if="initialLoading" />
 
         <!-- Tabla de equipos -->
-        <div class="teams-table-container">
-          <table class="teams-table">
-            <thead>
-              <tr>
-                <th>Equipo</th>
-                <th>Capitán</th>
-                <th>Email</th>
-                <th>Torneos</th>
-                <th>Estado</th>
-                <th>Fecha Creación</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="team in filteredTeams" :key="team.id" :class="{ 'inactive': !team.isActive }">
-                <td class="team-name">
-                  <div class="team-info">
-                    <img v-if="team.logoPath" :src="team.logoPath" alt="Logo" class="team-logo" />
-                    <span class="team-name-text">{{ team.name }}</span>
-                  </div>
-                </td>
-                <td class="captain">{{ team.user.name }}</td>
-                <td class="email">{{ team.user.email }}</td>
-                <td class="tournaments">
-                  <div class="tournaments-list">
-                    <span v-if="team.tournaments.length === 0" class="no-tournaments">Sin torneos</span>
-                    <span v-else v-for="tournament in team.tournaments" :key="tournament.id" class="tournament-badge"
-                      :title="tournament.name">
-                      {{ tournament.name }}
+        <div v-else>
+          <div class="teams-table-container">
+            <table class="teams-table">
+              <thead>
+                <tr>
+                  <th>Equipo</th>
+                  <th>Capitán</th>
+                  <th>Email</th>
+                  <th>Torneos</th>
+                  <th>Estado</th>
+                  <th>Fecha Creación</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="team in filteredTeams" :key="team.id" :class="{ 'inactive': !team.isActive }">
+                  <td class="team-name">
+                    <div class="team-info">
+                      <img v-if="team.logoPath" :src="team.logoPath" alt="Logo" class="team-logo" />
+                      <span class="team-name-text">{{ team.name }}</span>
+                    </div>
+                  </td>
+                  <td class="captain">{{ team.user.name }}</td>
+                  <td class="email">{{ team.user.email }}</td>
+                  <td class="tournaments">
+                    <div class="tournaments-list">
+                      <span v-if="team.tournaments.length === 0" class="no-tournaments">Sin torneos</span>
+                      <span v-else v-for="tournament in team.tournaments" :key="tournament.id" class="tournament-badge"
+                        :title="tournament.name">
+                        {{ tournament.name }}
+                      </span>
+                    </div>
+                  </td>
+                  <td class="status">
+                    <span class="status-badge" :class="team.isActive ? 'active' : 'inactive'">
+                      {{ team.isActive ? 'Activo' : 'Inactivo' }}
                     </span>
-                  </div>
-                </td>
-                <td class="status">
-                  <span class="status-badge" :class="team.isActive ? 'active' : 'inactive'">
-                    {{ team.isActive ? 'Activo' : 'Inactivo' }}
-                  </span>
-                </td>
-                <td class="date">{{ formatDate(team.createdAt) }}</td>
-                <td class="actions">
-                  <div class="actions-group">
-                    <button @click="openEditModal(team)" class="btn-action edit" title="Editar equipo">
-                      Editar
-                    </button>
-                    <button @click="confirmDelete(team)" class="btn-action delete" title="Eliminar equipo">
-                      Eliminar
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+                  </td>
+                  <td class="date">{{ formatDate(team.createdAt) }}</td>
+                  <td class="actions">
+                    <div class="actions-group">
+                      <button @click="openEditModal(team)" class="btn-action edit" title="Editar equipo">
+                        Editar
+                      </button>
+                      <button @click="confirmDelete(team)" class="btn-action delete" title="Eliminar equipo">
+                        Eliminar
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
 
-          <div v-if="filteredTeams.length === 0" class="no-teams">
-            <div class="no-teams-icon">🏆</div>
-            <p>No hay equipos registrados{{ selectedCategoryFilter ? ' en esta categoría' : '' }}</p>
+            <div v-if="filteredTeams.length === 0" class="no-teams">
+              <div class="no-teams-icon">🏆</div>
+              <p>No hay equipos registrados{{ selectedCategoryFilter ? ' en esta categoría' : '' }}</p>
+            </div>
           </div>
-        </div>
+        </div> <!-- Cierre del v-else -->
       </div>
     </div>
 
@@ -132,6 +137,7 @@ const { teams, loadTeams, createTeam, updateTeam, deleteTeam, deleteTeamLogo, lo
 const { categories, loadCategories } = useCategories()
 const { tournaments, loadTournaments } = useTournaments()
 const selectedCategoryFilter = ref<string>('')
+const initialLoading = ref(true)
 
 // Modal de creación/edición
 const showUpsertModal = ref(false)
@@ -157,11 +163,17 @@ const availableTournaments = computed(() => {
 
 // Funciones
 const loadData = async () => {
-  await Promise.all([
-    loadTeams(),
-    loadCategories(),
-    loadTournaments()
-  ])
+  try {
+    await Promise.all([
+      loadTeams(),
+      loadCategories(),
+      loadTournaments()
+    ])
+  } catch (err) {
+    console.error('Error loading data:', err)
+  } finally {
+    initialLoading.value = false
+  }
 }
 
 const openCreateModal = () => {

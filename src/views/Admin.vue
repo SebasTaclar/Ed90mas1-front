@@ -6,7 +6,11 @@
       <p v-else-if="userRole === 'team'">Gestión de tu equipo - Administra tus jugadores</p>
     </div>
 
-    <div class="dashboard-grid">
+    <!-- Spinner mientras carga -->
+    <Spinner v-if="isLoading" />
+
+    <!-- Dashboard principal -->
+    <div v-else class="dashboard-grid">
       <!-- Cards solo para administradores -->
       <template v-if="userRole === 'admin'">
         <div class="card" @click="navigateTo('/admin/teams')">
@@ -88,6 +92,7 @@ import { useTournaments } from '@/composables/useTournaments';
 import { useTeams } from '@/composables/useTeams';
 import { usePlayers } from '@/composables/usePlayers';
 import { getUserRole, getUserTeamId } from '@/utils/auth';
+import Spinner from '@/components/Spinner.vue';
 
 defineOptions({
   name: 'AdminView',
@@ -98,6 +103,9 @@ const router = useRouter();
 // Obtener el rol del usuario
 const userRole = ref<string | null>(getUserRole());
 
+// Estado de loading
+const isLoading = ref(false);
+
 // Usar los composables
 const { categories, loadCategories } = useCategories();
 const { tournaments, loadTournaments } = useTournaments();
@@ -105,24 +113,31 @@ const { teams, loadTeams } = useTeams();
 const { players, loadPlayersByTeam } = usePlayers();
 
 // Computed properties para estadísticas
-const teamsCount = computed(() => teams.value?.length || 0);
-const tournamentsCount = computed(() => tournaments.value?.length || 0);
-const categoriesCount = computed(() => categories.value?.length || 0);
-
-const playersCount = computed(() => players.value?.length || 0);
+const teamsCount = computed(() => isLoading.value ? '...' : (teams.value?.length || 0));
+const tournamentsCount = computed(() => isLoading.value ? '...' : (tournaments.value?.length || 0));
+const categoriesCount = computed(() => isLoading.value ? '...' : (categories.value?.length || 0));
+const playersCount = computed(() => isLoading.value ? '...' : (players.value?.length || 0));
 // Funciones
 const loadData = async () => {
-  if (userRole.value === 'admin') {
-    await Promise.all([
-      loadTeams(),
-      loadTournaments(),
-      loadCategories()
-    ]);
-  } else if (userRole.value === 'team') {
-    const teamId = getUserTeamId();
-    if (teamId) {
-      await loadPlayersByTeam(teamId);
+  try {
+    isLoading.value = true;
+
+    if (userRole.value === 'admin') {
+      await Promise.all([
+        loadTeams(),
+        loadTournaments(),
+        loadCategories()
+      ]);
+    } else if (userRole.value === 'team') {
+      const teamId = getUserTeamId();
+      if (teamId) {
+        await loadPlayersByTeam(teamId);
+      }
     }
+  } catch (error) {
+    console.error('Error loading admin data:', error);
+  } finally {
+    isLoading.value = false;
   }
 };
 

@@ -26,8 +26,11 @@
           </button>
         </div>
 
+        <!-- Spinner mientras carga -->
+        <Spinner v-if="initialLoading" />
+
         <!-- Tabla de categorías -->
-        <div class="categories-table-container">
+        <div v-else class="categories-table-container">
           <table class="categories-table">
             <thead>
               <tr>
@@ -106,6 +109,7 @@ import { useTeams } from '@/composables/useTeams';
 import type { Category } from '@/types/CategoryType';
 import UpsertCategoryPopup from '@/components/UpsertCategoryPopup.vue';
 import ConfirmationModal from '@/components/ConfirmationModal.vue';
+import Spinner from '@/components/Spinner.vue';
 
 // Usar el composable de categorías y teams
 const {
@@ -116,6 +120,9 @@ const {
 } = useCategories();
 
 const { teams, loadTeams } = useTeams();
+
+// Estado de loading inicial
+const initialLoading = ref(true);
 
 // Estados reactivos locales
 const searchQuery = ref('');
@@ -191,18 +198,24 @@ const handleDelete = async () => {
 
 // Inicialización
 onMounted(async () => {
-  clearError();
-  const [categoriesResult, teamsResult] = await Promise.all([
-    loadCategories(),
-    loadTeams()
-  ]);
+  try {
+    clearError();
+    const [categoriesResult, teamsResult] = await Promise.all([
+      loadCategories(),
+      loadTeams()
+    ]);
 
-  if (!categoriesResult.success) {
-    console.error('Error al cargar categorías:', categoriesResult.message);
-  }
+    if (!categoriesResult.success) {
+      console.error('Error al cargar categorías:', categoriesResult.message);
+    }
 
-  if (!teamsResult.success) {
-    console.error('Error al cargar equipos:', teamsResult.message);
+    if (!teamsResult.success) {
+      console.error('Error al cargar equipos:', teamsResult.message);
+    }
+  } catch (err) {
+    console.error('Error loading data:', err);
+  } finally {
+    initialLoading.value = false;
   }
 });
 </script>

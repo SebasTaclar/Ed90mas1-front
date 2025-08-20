@@ -34,11 +34,13 @@
             <div class="form-row">
               <div class="input-group">
                 <label for="fixtureType">Tipo de Torneo *</label>
-                <select id="fixtureType" v-model="fixtureType" @change="generateFixtures" class="form-select">
-                  <option value="group_stage">Fase de Grupos</option>
-                  <option value="round_robin">Todos vs Todos (Round Robin)</option>
-                  <option value="knockout">Eliminación Directa</option>
-                </select>
+                <div class="form-select">
+                  <select id="fixtureType" v-model="fixtureType" @change="generateFixtures">
+                    <option value="group_stage">Fase de Grupos</option>
+                    <option value="round_robin">Todos vs Todos (Round Robin)</option>
+                    <option value="knockout">Eliminación Directa</option>
+                  </select>
+                </div>
                 <div class="fixture-type-info" v-if="props.tournamentData?.groups">
                   <small class="info-text">
                     <span v-if="props.tournamentData.groups.length > 1" class="text-success">
@@ -879,7 +881,34 @@ watch(() => props.tournamentData?.groups?.length, (numberOfGroups) => {
   transition: border-color var(--transition-normal);
 }
 
-.form-select:focus,
+/* Estilos específicos para select dentro del contenedor form-select */
+.form-select select {
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--app-text-primary);
+  font-size: inherit;
+  width: 100%;
+  cursor: pointer;
+}
+
+.form-select select:focus {
+  outline: none;
+}
+
+.form-select select option {
+  background: var(--app-bg-primary);
+  color: var(--app-text-primary);
+  padding: 0.5rem 0.75rem;
+  font-weight: 500;
+}
+
+.form-select select option:hover {
+  background: var(--primary-blue);
+  color: var(--white);
+}
+
+.form-select:focus-within,
 .form-input:focus {
   outline: none;
   border-color: var(--primary-blue);

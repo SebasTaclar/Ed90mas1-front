@@ -9,20 +9,24 @@
     <div class="filters-container">
       <div class="filter-group">
         <label>Equipo:</label>
-        <select v-model="selectedTeam" class="filter-select">
-          <option value="">Todos los equipos</option>
-          <option v-for="team in availableTeams" :key="team" :value="team">{{ team }}</option>
-        </select>
+        <div class="filter-select">
+          <select v-model="selectedTeam">
+            <option value="">Todos los equipos</option>
+            <option v-for="team in availableTeams" :key="team" :value="team">{{ team }}</option>
+          </select>
+        </div>
       </div>
 
       <div class="filter-group">
         <label>Fecha:</label>
-        <select v-model="selectedDate" class="filter-select date-select">
-          <option value="">Todas las fechas</option>
-          <option v-for="date in availableDates" :key="date" :value="date">
-            {{ formatDateForSelect(date) }}
-          </option>
-        </select>
+        <div class="filter-select date-select">
+          <select v-model="selectedDate">
+            <option value="">Todas las fechas</option>
+            <option v-for="date in availableDates" :key="date" :value="date">
+              {{ formatDateForSelect(date) }}
+            </option>
+          </select>
+        </div>
       </div>
 
       <button v-if="hasActiveFilters" @click="clearFilters" class="clear-btn">
@@ -302,12 +306,6 @@ const completedMatches = computed(() => {
   ).length
 })
 
-// Computed properties para el modal
-const availableTeamsForSelect = computed(() => {
-  return props.tournamentTeams || []
-})
-
-// Funciones
 const clearFilters = () => {
   selectedTeam.value = ''
   selectedDate.value = ''
@@ -652,9 +650,46 @@ const deleteMatch = async (matchId: number) => {
   transition: all var(--transition-normal);
   font-family: inherit;
   font-weight: 500;
+  cursor: pointer;
+  appearance: none;
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 16px;
+  padding-right: 2.5rem;
+  min-width: 240px;
 }
 
-.filter-select:focus,
+/* Estilos específicos para select dentro del contenedor filter-select */
+.filter-select select {
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--white);
+  font-size: inherit;
+  font-family: inherit;
+  font-weight: inherit;
+  width: 100%;
+  cursor: pointer;
+  appearance: none;
+}
+
+.filter-select select:focus {
+  outline: none;
+}
+
+.filter-select select option {
+  background: var(--primary-blue);
+  color: var(--white);
+  padding: 0.5rem 0.75rem;
+  font-weight: 500;
+}
+
+.filter-select select option:hover {
+  background: var(--tertiary-blue);
+  color: var(--white);
+}
+
+.filter-select:focus-within,
 .filter-input:focus {
   outline: none;
   border-color: var(--secondary-blue);
@@ -670,51 +705,14 @@ const deleteMatch = async (matchId: number) => {
   border-color: var(--secondary-blue);
 }
 
-/* Estilos específicos para el select (dropdown) */
-.filter-select {
-  cursor: pointer;
-  appearance: none;
-  background-repeat: no-repeat;
-  background-position: right 0.75rem center;
-  background-size: 16px;
-  padding-right: 2.5rem;
-  min-width: 240px;
-}
-
 /* Icono personalizado para el dropdown de fecha */
 .filter-select.date-select {
   background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3crect x='3' y='4' width='18' height='18' rx='2' ry='2'%3e%3c/rect%3e%3cline x1='16' y1='2' x2='16' y2='6'%3e%3c/line%3e%3cline x1='8' y1='2' x2='8' y2='6'%3e%3c/line%3e%3cline x1='3' y1='10' x2='21' y2='10'%3e%3c/line%3e%3c/svg%3e") !important;
 }
 
-/* Override para fondos más atractivos en lugar del blanco/transparente */
-.filter-select {
-  background-color: var(--primary-blue) !important;
-  color: var(--white) !important;
-  border-color: var(--tertiary-blue);
-}
-
-.filter-select:focus {
-  background-color: var(--tertiary-blue) !important;
-  border-color: var(--secondary-blue);
-  color: var(--white) !important;
-}
-
-.filter-select:hover {
-  background-color: var(--tertiary-blue) !important;
-  transform: translateY(-1px);
-}
-
 /* Flecha para dropdown normal */
 .filter-select:not(.date-select) {
   background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
-}
-
-.filter-select option {
-  background: var(--primary-blue);
-  color: var(--white);
-  padding: 0.75rem;
-  border: none;
-  font-weight: 500;
 }
 
 .clear-btn {
