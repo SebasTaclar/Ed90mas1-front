@@ -83,7 +83,7 @@
       <div class="selected-player-display">
        <span class="player-name">{{ getPlayerName(selectedPlayer) }}</span>
        <span class="team-name">({{ selectedTeam === 'home' ? matchData?.homeTeam.teamName : matchData?.awayTeam.teamName
-        }})</span>
+       }})</span>
       </div>
      </div>
 
@@ -485,7 +485,7 @@ onUnmounted(() => {
  min-height: 100vh;
  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
  color: white;
- padding: 1rem;
+ padding: 2rem;
 }
 
 .match-header {
@@ -1020,7 +1020,7 @@ onUnmounted(() => {
 
 @media (max-width: 768px) {
  .match-live {
-  padding: 0.5rem;
+  padding: 1rem;
  }
 
  .match-header {

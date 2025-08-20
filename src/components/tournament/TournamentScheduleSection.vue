@@ -166,6 +166,10 @@
                     :disabled="!match.homeTeam || !match.awayTeam" title="Confirmar jugadores del partido">
                     👥
                   </button>
+                  <button @click="attemptStartMatch(match)" class="edit-btn start-match-btn"
+                    :disabled="!match.homeTeam || !match.awayTeam" title="Iniciar partido">
+                    ⚽
+                  </button>
                   <button @click="startEditing(match.id!, 'date')" class="edit-btn date-edit"
                     :disabled="editingMatch !== null" title="Editar fecha y hora">
                     📅
@@ -195,6 +199,10 @@
     <!-- Modal de confirmación para eliminar -->
     <ConfirmationModal v-if="showDeleteConfirm" :title="deleteModalTitle" :message="deleteModalMessage"
       @confirm="handleDeleteConfirm" @cancel="cancelDelete" />
+
+    <!-- Modal de validación para iniciar partido -->
+    <ConfirmationModal v-if="showValidationModal" title="Plantillas sin confirmar" :message="validationMessage"
+      :danger="true" @confirm="handleValidationConfirm" @cancel="handleValidationConfirm" />
   </div>
 </template>
 
@@ -657,6 +665,63 @@ const deleteMatch = async (matchId: number) => {
     isDeletingMatch.value = false
   }
 }
+
+// Estado para el modal de validación de inicio de partido
+const showValidationModal = ref(false)
+const validationMessage = ref('')
+
+// Función para intentar iniciar un partido con validación
+const attemptStartMatch = async (match: Match) => {
+  if (!match.id) {
+    console.error('No se puede iniciar: el partido no tiene ID')
+    return
+  }
+
+  try {
+    // Obtener información actualizada del partido con jugadores confirmados
+    const matchDetails = await matchesService.getMatchById(match.id)
+
+    if (!matchDetails) {
+      validationMessage.value = 'Error al cargar los detalles del partido.'
+      showValidationModal.value = true
+      return
+    }
+
+    // Verificar si ambos equipos tienen jugadores confirmados
+    // attendingPlayers es un objeto con teamId como clave y array de playerIds como valor
+    const homeTeamId = match.homeTeam?.id?.toString() || ''
+    const awayTeamId = match.awayTeam?.id?.toString() || ''
+
+    const homePlayersCount = matchDetails.attendingPlayers?.[homeTeamId]?.length || 0
+    const awayPlayersCount = matchDetails.attendingPlayers?.[awayTeamId]?.length || 0
+
+    const homeTeamHasPlayers = homePlayersCount > 0
+    const awayTeamHasPlayers = awayPlayersCount > 0
+
+    if (!homeTeamHasPlayers || !awayTeamHasPlayers) {
+      // Mostrar modal de validación
+      const missingTeams = []
+      if (!homeTeamHasPlayers) missingTeams.push(match.homeTeam?.name || 'Equipo local')
+      if (!awayTeamHasPlayers) missingTeams.push(match.awayTeam?.name || 'Equipo visitante')
+
+      validationMessage.value = `No se puede iniciar el partido. Los siguientes equipos necesitan confirmar su plantilla:\n\n• ${missingTeams.join('\n• ')}\n\nPor favor, usa el botón "👥" para confirmar las plantillas antes de iniciar el partido.`
+      showValidationModal.value = true
+      return
+    }
+
+    // Si ambos equipos tienen plantillas confirmadas, iniciar el partido
+    router.push(`/match-live/${match.id}`)
+
+  } catch (error) {
+    console.error('Error checking match details:', error)
+    validationMessage.value = 'Error al verificar el estado del partido. Por favor, inténtalo de nuevo.'
+    showValidationModal.value = true
+  }
+}// Función para manejar la confirmación del modal de validación
+const handleValidationConfirm = () => {
+  showValidationModal.value = false
+  validationMessage.value = ''
+}
 </script>
 
 <style scoped>
@@ -961,7 +1026,7 @@ const deleteMatch = async (matchId: number) => {
 
 .table-header {
   display: grid;
-  grid-template-columns: 100px 1fr 180px 200px 180px 180px;
+  grid-template-columns: 100px 1fr 180px 200px 180px 200px;
   background: var(--primary-blue);
   color: var(--white);
   font-weight: 600;
@@ -971,7 +1036,7 @@ const deleteMatch = async (matchId: number) => {
 
 .table-row {
   display: grid;
-  grid-template-columns: 100px 1fr 180px 200px 180px 180px;
+  grid-template-columns: 100px 1fr 180px 200px 180px 200px;
   padding: 1rem;
   gap: 1rem;
   border-bottom: 1px solid var(--app-border-color);
@@ -1211,6 +1276,17 @@ const deleteMatch = async (matchId: number) => {
   color: white;
 }
 
+.edit-btn.start-match-btn {
+  border-color: rgba(16, 185, 129, 0.3);
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.edit-btn.start-match-btn:hover:not(:disabled) {
+  background: #10b981;
+  border-color: #10b981;
+  color: white;
+}
+
 .edit-btn.delete-btn {
   border-color: rgba(239, 68, 68, 0.3);
   background: rgba(239, 68, 68, 0.1);
@@ -1420,7 +1496,7 @@ const deleteMatch = async (matchId: number) => {
 
   .table-header,
   .table-row {
-    grid-template-columns: 80px 1fr 150px 160px 130px 150px;
+    grid-template-columns: 80px 1fr 150px 160px 130px 180px;
   }
 
   .team-name {
