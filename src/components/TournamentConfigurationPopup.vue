@@ -117,6 +117,7 @@
             <span v-else-if="saveButtonStatus.type === 'saving'">⏳</span>
             <span v-else-if="saveButtonStatus.type === 'creating'">⏳</span>
             <span v-else-if="saveButtonStatus.type === 'ready'">✅</span>
+            <span v-else-if="saveButtonStatus.type === 'existing-matches'">🚫</span>
             <span v-else>ℹ️</span>
           </span>
           <span class="status-message">{{ saveButtonStatus.message }}</span>
@@ -142,6 +143,8 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import type { Tournament, TournamentConfiguration, TournamentGroup, TeamAssignment } from '@/types/TournamentType';
 import { useTournamentConfiguration } from '@/composables/useTournamentConfiguration';
+import { useFixtures } from '@/composables/useFixtures';
+import { matchesService } from '@/services/matchesService';
 import Spinner from '@/components/Spinner.vue';
 
 interface Props {
@@ -186,6 +189,7 @@ const dragOverGroup = ref<number | null>(null);
 const isCreatingConfiguration = ref(false);
 const isSaving = ref(false);
 const isConfigurationLoaded = ref(false); // Nueva variable para evitar cargas múltiples
+const existingMatches = ref<any[]>([]); // Para almacenar los partidos existentes del torneo
 
 // Computed properties
 const availableGroupNumbers = computed(() => {
@@ -217,6 +221,11 @@ const warnings = computed(() => {
   return warns;
 });
 
+// Computed para verificar si existen partidos
+const hasExistingMatches = computed(() => {
+  return existingMatches.value.length > 0;
+});
+
 // Computed para mensajes informativos del botón
 const saveButtonStatus = computed(() => {
   if (loading.value) {
@@ -229,6 +238,15 @@ const saveButtonStatus = computed(() => {
 
   if (isCreatingConfiguration.value) {
     return { canSave: false, message: 'Creando configuración...', type: 'creating' };
+  }
+
+  // Nueva validación: Si ya existen partidos, no permitir cambios
+  if (hasExistingMatches.value) {
+    return {
+      canSave: false,
+      message: `No se puede modificar la configuración porque ya existen ${existingMatches.value.length} partido${existingMatches.value.length === 1 ? '' : 's'} creado${existingMatches.value.length === 1 ? '' : 's'} para este torneo`,
+      type: 'existing-matches'
+    };
   }
 
   if (localConfiguration.value.numberOfGroups <= 0) {
@@ -412,6 +430,22 @@ const saveConfiguration = async () => {
   }
 };
 
+// Función para cargar partidos existentes del torneo
+const loadExistingMatches = async () => {
+  if (!props.tournamentData?.id) {
+    existingMatches.value = [];
+    return;
+  }
+
+  try {
+    const matches = await matchesService.getTournamentMatches(props.tournamentData.id);
+    existingMatches.value = matches || [];
+  } catch (error) {
+    console.error('Error cargando partidos existentes:', error);
+    existingMatches.value = [];
+  }
+};
+
 // Función para convertir teamAssignments a grupos de vista previa
 const loadExistingConfiguration = (config: any) => {
   // Evitar cargas múltiples
@@ -473,7 +507,7 @@ onMounted(async () => {
 });
 
 // Watcher principal para manejar la configuración del torneo
-watch(() => props.tournamentData, (newTournament, oldTournament) => {
+watch(() => props.tournamentData, async (newTournament, oldTournament) => {
   // Resetear el estado cuando cambia el torneo
   if (newTournament?.id !== oldTournament?.id) {
     isConfigurationLoaded.value = false;
@@ -487,6 +521,12 @@ watch(() => props.tournamentData, (newTournament, oldTournament) => {
       isConfigured: false
     };
     previewGroups.value = [];
+    existingMatches.value = []; // Limpiar partidos existentes
+  }
+
+  // Cargar partidos existentes al cambiar el torneo
+  if (newTournament?.id) {
+    await loadExistingMatches();
   }
 
   // Cargar configuración si existe
@@ -1099,6 +1139,11 @@ watch(() => props.tournamentData, (newTournament, oldTournament) => {
   background: #2d3748;
 }
 
+:root[data-theme='dark'] .save-button-status.existing-matches {
+  border-color: #dc3545;
+  background: #2d3748;
+}
+
 :root[data-theme='dark'] .btn-primary:disabled,
 :root[data-theme='dark'] .btn-primary.btn-disabled {
   background: #2d3748 !important;
@@ -1146,6 +1191,12 @@ watch(() => props.tournamentData, (newTournament, oldTournament) => {
 .save-button-status.no-teams {
   background: var(--app-bg-secondary);
   border: 2px solid #6c757d;
+  color: var(--primary-text);
+}
+
+.save-button-status.existing-matches {
+  background: var(--app-bg-secondary);
+  border: 2px solid #dc3545;
   color: var(--primary-text);
 }
 

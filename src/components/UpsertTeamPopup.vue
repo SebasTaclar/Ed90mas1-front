@@ -144,20 +144,31 @@
           <div class="form-section">
             <h4>Torneos Asociados</h4>
 
+            <!-- Indicador de carga para partidos -->
+            <div v-if="loadingMatches" class="loading-matches">
+              <span class="loading-icon">⏳</span>
+              Verificando partidos existentes...
+            </div>
+
             <div class="tournaments-selection">
               <div v-if="availableTournaments.length === 0" class="no-tournaments-message">
                 No hay torneos disponibles
               </div>
               <div v-else class="tournaments-checkboxes">
-                <label v-for="tournament in availableTournaments" :key="tournament.id" class="tournament-checkbox">
+                <label v-for="tournament in availableTournaments" :key="tournament.id" class="tournament-checkbox"
+                  :class="{ 'locked': lockedTournamentIds.includes(tournament.id) }">
                   <input type="checkbox" :value="tournament.id" v-model="formData.tournamentIds"
-                    @change="clearError('tournamentIds')" />
+                    :disabled="lockedTournamentIds.includes(tournament.id)" @change="clearError('tournamentIds')" />
                   <span class="checkbox-text">
                     <strong>{{ tournament.name }}</strong>
                     <small v-if="tournament.description">{{ tournament.description }}</small>
                     <span class="tournament-dates">
                       {{ formatDate(tournament.startDate) }} - {{ formatDate(tournament.endDate) }}
                     </span>
+                    <!-- Mensaje informativo si está bloqueado -->
+                    <div v-if="lockedTournamentIds.includes(tournament.id)" class="locked-message">
+                      {{ getLockMessage(tournament.id) }}
+                    </div>
                   </span>
                 </label>
               </div>
@@ -194,6 +205,7 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useTeams } from '@/composables/useTeams'
 import { useTournaments } from '@/composables/useTournaments'
+import { matchesService } from '@/services/matchesService'
 import type { Team, CreateTeamRequest, UpdateTeamRequest } from '@/types/TeamType'
 import type { Tournament } from '@/types/TournamentType'
 import ConfirmationModal from '@/components/ConfirmationModal.vue'
@@ -236,6 +248,10 @@ const errors = ref<Record<string, string>>({})
 // Variables para confirmación de cambios
 const showConfirmation = ref(false)
 const initialFormData = ref<string>('')
+
+// Estado para validar partidos existentes
+const tournamentMatchesMap = ref<Map<number, any[]>>(new Map())
+const loadingMatches = ref(false)
 const availableTournaments = computed(() => {
   const now = new Date()
   return (tournaments.value || []).filter(tournament => {
@@ -264,6 +280,67 @@ const isFormValid = computed(() => {
 // Métodos
 const clearError = (field: string) => {
   delete errors.value[field]
+}
+
+// Función para cargar partidos existentes de un torneo específico
+const loadTournamentMatches = async (tournamentId: number) => {
+  try {
+    const matches = await matchesService.getTournamentMatches(tournamentId)
+    tournamentMatchesMap.value.set(tournamentId, matches || [])
+  } catch (error) {
+    console.error(`Error cargando partidos del torneo ${tournamentId}:`, error)
+    tournamentMatchesMap.value.set(tournamentId, [])
+  }
+}
+
+// Función para verificar si un torneo tiene partidos con el equipo actual
+const tournamentHasMatchesWithTeam = (tournamentId: number): boolean => {
+  if (!props.teamData?.id) return false
+
+  const matches = tournamentMatchesMap.value.get(tournamentId) || []
+  return matches.some(match =>
+    match.homeTeamId === props.teamData!.id ||
+    match.awayTeamId === props.teamData!.id
+  )
+}
+
+// Función para verificar si un torneo tiene partidos en general (cualquier equipo)
+const tournamentHasAnyMatches = (tournamentId: number): boolean => {
+  const matches = tournamentMatchesMap.value.get(tournamentId) || []
+  return matches.length > 0
+}
+
+// Computed para obtener tournamentIds que no se pueden modificar
+const lockedTournamentIds = computed(() => {
+  return availableTournaments.value
+    .filter(tournament => {
+      // En modo crear: bloquear torneos que ya tienen partidos
+      if (props.mode === 'create') {
+        return tournamentHasAnyMatches(tournament.id)
+      }
+
+      // En modo editar: bloquear torneos donde el equipo ya tiene partidos
+      // O torneos que tienen partidos en general (para evitar agregar nuevos equipos)
+      return tournamentHasMatchesWithTeam(tournament.id) ||
+        (tournamentHasAnyMatches(tournament.id) && !formData.value.tournamentIds.includes(tournament.id))
+    })
+    .map(tournament => tournament.id)
+})
+
+// Función para obtener el mensaje de bloqueo específico por torneo
+const getLockMessage = (tournamentId: number): string => {
+  if (props.mode === 'create') {
+    return '🚫 No se puede agregar: el torneo ya tiene partidos creados'
+  }
+
+  // Modo editar
+  if (tournamentHasMatchesWithTeam(tournamentId)) {
+    return '🚫 No se puede remover: ya existen partidos con este equipo'
+  } else if (tournamentHasAnyMatches(tournamentId)) {
+    return '🚫 No se puede agregar: el torneo ya tiene partidos creados'
+  }
+
+  return '🚫 No se puede modificar'
 }
 
 const handleFileChange = (event: Event) => {
@@ -492,6 +569,23 @@ const cancelClose = () => {
 watch(() => props.teamData, loadFormData, { immediate: true })
 watch(() => props.mode, loadFormData)
 
+// Watcher para cargar partidos cuando cambien los torneos disponibles
+watch(() => availableTournaments.value, async (newTournaments) => {
+  if (newTournaments.length > 0) {
+    loadingMatches.value = true
+    try {
+      // Cargar partidos para todos los torneos disponibles (tanto en crear como editar)
+      await Promise.all(
+        newTournaments.map(tournament => loadTournamentMatches(tournament.id))
+      )
+    } catch (error) {
+      console.error('Error cargando partidos de torneos:', error)
+    } finally {
+      loadingMatches.value = false
+    }
+  }
+}, { immediate: true })
+
 // Lifecycle
 onMounted(async () => {
   await loadTournaments()
@@ -668,6 +762,36 @@ onUnmounted(() => {
   margin-top: 1rem;
 }
 
+.loading-matches {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--app-bg-secondary);
+  padding: 1rem;
+  border-radius: var(--border-radius-md);
+  border: 1px solid var(--app-border-color);
+  color: var(--app-text-secondary);
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.loading-icon {
+  font-size: 1rem;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+}
+
 .no-tournaments-message {
   color: var(--app-text-secondary);
   font-style: italic;
@@ -696,6 +820,22 @@ onUnmounted(() => {
 .tournament-checkbox:hover {
   background: var(--app-hover-bg);
   border-color: var(--primary-blue);
+}
+
+.tournament-checkbox.locked {
+  opacity: 0.6;
+  background: var(--app-bg-secondary);
+  border-color: #dc3545;
+  cursor: not-allowed;
+}
+
+.tournament-checkbox.locked:hover {
+  background: var(--app-bg-secondary);
+  border-color: #dc3545;
+}
+
+.tournament-checkbox.locked input[type="checkbox"] {
+  cursor: not-allowed;
 }
 
 .tournament-checkbox input[type="checkbox"] {
@@ -738,6 +878,20 @@ onUnmounted(() => {
   border-radius: var(--border-radius-md);
   border: 1px solid var(--danger);
   text-align: center;
+}
+
+.locked-message {
+  background: rgba(220, 53, 69, 0.1);
+  color: #dc3545;
+  font-size: 0.8rem;
+  font-weight: 500;
+  padding: 0.5rem;
+  border-radius: var(--border-radius-sm);
+  border: 1px solid rgba(220, 53, 69, 0.3);
+  margin-top: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .form-actions {

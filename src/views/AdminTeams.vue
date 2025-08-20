@@ -77,12 +77,14 @@
                 </td>
                 <td class="date">{{ formatDate(team.createdAt) }}</td>
                 <td class="actions">
-                  <button @click="openEditModal(team)" class="btn-action edit" title="Editar equipo">
-                    Editar
-                  </button>
-                  <button @click="confirmDelete(team)" class="btn-action delete" title="Eliminar equipo">
-                    Eliminar
-                  </button>
+                  <div class="actions-group">
+                    <button @click="openEditModal(team)" class="btn-action edit" title="Editar equipo">
+                      Editar
+                    </button>
+                    <button @click="confirmDelete(team)" class="btn-action delete" title="Eliminar equipo">
+                      Eliminar
+                    </button>
+                  </div>
                 </td>
               </tr>
             </tbody>
@@ -244,7 +246,7 @@ onMounted(() => {
 }
 
 .admin-container {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 2rem;
 }
@@ -474,14 +476,69 @@ onMounted(() => {
   width: 100%;
   border-collapse: collapse;
   margin-top: 1rem;
+  min-width: 1200px;
+  /* Ancho mínimo para asegurar espaciado adecuado */
 }
 
 .teams-table th,
 .teams-table td {
-  padding: 1rem;
+  padding: 0.75rem 0.5rem;
   text-align: left;
   border-bottom: 1px solid var(--app-border-color);
   color: var(--app-text-primary);
+  white-space: nowrap;
+}
+
+/* Definir anchos específicos para las columnas */
+.teams-table th:nth-child(1),
+.teams-table td:nth-child(1) {
+  width: 20%;
+  min-width: 200px;
+}
+
+/* Capitán */
+.teams-table th:nth-child(2),
+.teams-table td:nth-child(2) {
+  width: 15%;
+  min-width: 120px;
+}
+
+/* Email */
+.teams-table th:nth-child(3),
+.teams-table td:nth-child(3) {
+  width: 18%;
+  min-width: 180px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Torneos */
+.teams-table th:nth-child(4),
+.teams-table td:nth-child(4) {
+  width: 15%;
+  min-width: 150px;
+}
+
+/* Estado */
+.teams-table th:nth-child(5),
+.teams-table td:nth-child(5) {
+  width: 10%;
+  min-width: 100px;
+}
+
+/* Fecha */
+.teams-table th:nth-child(6),
+.teams-table td:nth-child(6) {
+  width: 12%;
+  min-width: 110px;
+}
+
+/* Acciones */
+.teams-table th:nth-child(7),
+.teams-table td:nth-child(7) {
+  width: 10%;
+  min-width: 120px;
 }
 
 .teams-table th {
@@ -570,31 +627,6 @@ onMounted(() => {
 .status-badge.inactive {
   background: #f8d7da;
   color: #721c24;
-}
-
-.btn-action {
-  padding: 0.4rem 0.8rem;
-  border: none;
-  border-radius: var(--border-radius-md);
-  font-size: 0.8rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all var(--transition-normal);
-}
-
-.btn-action.deactivate {
-  background: #f8d7da;
-  color: #721c24;
-}
-
-.btn-action.activate {
-  background: #d4edda;
-  color: #155724;
-}
-
-.btn-action:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-light);
 }
 
 .no-teams {
@@ -781,22 +813,24 @@ onMounted(() => {
 
 /* Estilos para la columna de torneos en la tabla */
 .tournaments {
-  max-width: 200px;
+  max-width: 150px;
 }
 
 .tournaments-list {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  max-height: 80px;
+  overflow-y: auto;
 }
 
 .tournament-badge {
   display: inline-block;
-  padding: 0.2rem 0.5rem;
+  padding: 0.15rem 0.4rem;
   background: var(--primary-blue);
   color: var(--white);
   border-radius: var(--border-radius-sm);
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
@@ -808,39 +842,47 @@ onMounted(() => {
 .no-tournaments {
   color: var(--app-text-secondary);
   font-style: italic;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
 }
 
 .team-info {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.5rem;
 }
 
 .team-logo {
-  width: 64px;
-  height: 64px;
+  width: 48px;
+  height: 48px;
   border-radius: var(--border-radius-md);
   object-fit: cover;
   border: 2px solid var(--app-border-color);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
 }
 
 .team-name-text {
   font-weight: 600;
   color: var(--app-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.btn-action {
+  padding: 0.3rem 0.6rem;
+  border: none;
+  border-radius: var(--border-radius-md);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  margin: 0.1rem;
+  display: inline-block;
 }
 
 .btn-action.delete {
   background: var(--danger);
   color: var(--white);
-  padding: 0.4rem 0.8rem;
-  border: none;
-  border-radius: var(--border-radius-md);
-  font-size: 0.8rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all var(--transition-normal);
 }
 
 .btn-action.delete:hover {
@@ -860,7 +902,29 @@ onMounted(() => {
   box-shadow: var(--shadow-light);
 }
 
+.actions-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
 /* Responsive */
+@media (max-width: 1024px) {
+  .admin-container {
+    max-width: 100%;
+    padding: 1rem;
+  }
+
+  .teams-table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .teams-table {
+    min-width: 1000px;
+  }
+}
+
 @media (max-width: 768px) {
   .admin-container {
     padding: 1rem;
@@ -880,16 +944,35 @@ onMounted(() => {
     gap: 0.5rem;
   }
 
+  .teams-table {
+    min-width: 800px;
+  }
+
   .teams-table th,
   .teams-table td {
-    padding: 0.5rem;
-    font-size: 0.8rem;
+    padding: 0.4rem 0.3rem;
+    font-size: 0.75rem;
   }
 
   .section-header {
     flex-direction: column;
     gap: 1rem;
     text-align: center;
+  }
+
+  .team-logo {
+    width: 40px;
+    height: 40px;
+  }
+
+  .actions-group {
+    flex-direction: row;
+    gap: 0.25rem;
+  }
+
+  .btn-action {
+    font-size: 0.65rem;
+    padding: 0.25rem 0.4rem;
   }
 }
 </style>
