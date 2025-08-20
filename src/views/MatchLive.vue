@@ -337,6 +337,37 @@ const addEvent = (eventType: 'goal' | 'yellow_card' | 'red_card' | 'substitution
   timestamp: new Date()
  }
 
+ // Verificar si es segunda amarilla antes de agregar el evento
+ if (eventType === 'yellow_card') {
+  const previousYellows = matchEvents.value.filter(e =>
+   e.playerId === selectedPlayer.value!.id && e.type === 'yellow_card'
+  )
+
+  // Si ya tiene una amarilla, agregar la segunda amarilla y luego automáticamente una roja
+  if (previousYellows.length === 1) {
+   // Primero agregar la segunda amarilla
+   matchEvents.value.push(event)
+
+   // Luego agregar automáticamente la tarjeta roja
+   const redCardEvent: MatchEvent = {
+    id: `${Date.now() + 1}-${Math.random()}`,
+    type: 'red_card',
+    minute: currentMinute,
+    playerId: selectedPlayer.value.id,
+    playerName: getPlayerName(selectedPlayer.value),
+    teamId: teamData.teamId,
+    teamName: teamData.teamName,
+    timestamp: new Date()
+   }
+   matchEvents.value.push(redCardEvent)
+
+   // Limpiar selección después de agregar eventos
+   selectedPlayer.value = null
+   selectedTeam.value = null
+   return
+  }
+ }
+
  matchEvents.value.push(event)
 
  // Actualizar puntaje si es gol
@@ -485,7 +516,7 @@ onUnmounted(() => {
  min-height: 100vh;
  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
  color: white;
- padding: 2rem;
+ padding: 3rem 2rem 2rem 2rem;
 }
 
 .match-header {
@@ -1020,7 +1051,7 @@ onUnmounted(() => {
 
 @media (max-width: 768px) {
  .match-live {
-  padding: 1rem;
+  padding: 2rem 1rem 1rem 1rem;
  }
 
  .match-header {
