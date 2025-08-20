@@ -69,8 +69,7 @@
           <!-- Jugadores distribuidos en formación simple -->
           <div class="players-formation">
             <div v-for="(player, index) in currentTeamLineup?.players" :key="player.id" class="player-item"
-              :class="{ 'player-selected': selectedPlayers.includes(player.id) }"
-              :style="getPlayerPosition(index, currentTeamLineup?.players.length || 0)"
+              :class="{ 'player-selected': selectedPlayers.includes(player.id) }" :style="getPlayerPosition(index)"
               @click="togglePlayerSelection(player.id)">
               <div class="player-photo-container">
                 <img v-if="player.photoPath" :src="player.photoPath" :alt="getPlayerName(player)" class="player-photo"
@@ -104,9 +103,32 @@
             <span v-else>✅ Confirmar Plantilla ({{ selectedPlayers.length }} jugadores)</span>
           </button>
 
+          <!-- Botón para iniciar partido (siempre visible) -->
+          <button @click="attemptStartMatch" class="btn-start-match">
+            <span class="match-icon">⚽</span>
+            <span>🚀 Iniciar Partido</span>
+          </button>
+
           <div v-if="attendingPlayersStatus" class="lineup-status" :class="attendingPlayersStatus.type">
             <span class="status-icon">{{ attendingPlayersStatus.icon }}</span>
             <span>{{ attendingPlayersStatus.message }}</span>
+          </div>
+
+          <!-- Mensaje informativo sobre el estado de confirmación de plantillas -->
+          <div v-if="!canStartMatch && matchData" class="match-info-status">
+            <div class="team-status-info">
+              <div class="team-status" :class="{ 'confirmed': homeTeamHasPlayers }">
+                <span class="team-indicator">🏠</span>
+                <span>{{ matchData.homeTeam.teamName }}:
+                  {{ homeTeamHasPlayers ? 'Plantilla confirmada' : 'Sin plantilla confirmada' }}</span>
+              </div>
+              <div class="team-status" :class="{ 'confirmed': awayTeamHasPlayers }">
+                <span class="team-indicator">✈️</span>
+                <span>{{ matchData.awayTeam.teamName }}:
+                  {{ awayTeamHasPlayers ? 'Plantilla confirmada' : 'Sin plantilla confirmada' }}</span>
+              </div>
+            </div>
+            <p class="info-text">Confirma la plantilla de ambos equipos para poder iniciar el partido</p>
           </div>
         </div>
       </div>
@@ -117,6 +139,10 @@
       <div class="spinner"></div>
       <p>Cargando información del partido...</p>
     </div>
+
+    <!-- Modal de validación para iniciar partido -->
+    <ConfirmationModal v-if="showValidationModal" title="No se puede iniciar el partido" :message="validationMessage"
+      confirm-text="Entendido" cancel-text="Cerrar" @confirm="handleValidationConfirm" @cancel="closeValidationModal" />
   </div>
 </template>
 
@@ -126,6 +152,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { matchesService } from '@/services/matchesService'
 import { playerService } from '@/services/api/playerService'
 import type { Player } from '@/types/PlayerType'
+import ConfirmationModal from '@/components/ConfirmationModal.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -158,10 +185,35 @@ const attendingPlayersStatus = ref<{
   message: string
 } | null>(null)
 
+// Variables para el modal de validación
+const showValidationModal = ref(false)
+const validationMessage = ref('')
+
 // Computed para obtener la alineación del equipo actual
 const currentTeamLineup = computed((): SimpleTeamLineup | null => {
   if (!matchData.value) return null
   return currentTeam.value === 'home' ? matchData.value.homeTeam : matchData.value.awayTeam
+})
+
+// Computed para verificar si se puede iniciar el partido
+const canStartMatch = computed((): boolean => {
+  return homeTeamHasPlayers.value && awayTeamHasPlayers.value
+})
+
+// Computed para verificar si el equipo local tiene jugadores confirmados
+const homeTeamHasPlayers = computed((): boolean => {
+  if (!matchData.value) return false
+  // Simular verificación de jugadores confirmados del equipo local
+  // Aquí deberías verificar si hay attendingPlayers para el equipo local
+  return true // Por ahora siempre true para pruebas, implementar lógica real después
+})
+
+// Computed para verificar si el equipo visitante tiene jugadores confirmados
+const awayTeamHasPlayers = computed((): boolean => {
+  if (!matchData.value) return false
+  // Simular verificación de jugadores confirmados del equipo visitante
+  // Aquí deberías verificar si hay attendingPlayers para el equipo visitante
+  return true // Por ahora siempre true para pruebas, implementar lógica real después
 })
 
 // Funciones de utilidad
@@ -193,7 +245,7 @@ const formatMatchDate = (dateString: string): string => {
 }
 
 // Función para calcular posición del jugador en formación 1-3-3
-const getPlayerPosition = (index: number, totalPlayers: number): Record<string, string> => {
+const getPlayerPosition = (index: number): Record<string, string> => {
   // Formación 1-3-3 definida con mejor espaciado: 1 portero, 3 defensas, 3 delanteros
   const formation133 = [
     // Portero - más atrás
@@ -245,6 +297,54 @@ const getSelectedPlayerName = (playerId: number): string => {
 
 const goBack = () => {
   router.back()
+}
+
+// Función para intentar iniciar el partido (con validación)
+const attemptStartMatch = async () => {
+  if (!matchData.value) return
+
+  try {
+    // Obtener datos actualizados del partido para verificar jugadores confirmados
+    const match = await matchesService.getMatchById(matchData.value.matchId)
+
+    if (!match?.attendingPlayers) {
+      validationMessage.value = 'No hay jugadores confirmados para ningún equipo. Debes confirmar la plantilla de ambos equipos antes de iniciar el partido.'
+      showValidationModal.value = true
+      return
+    }
+
+    const homeTeamId = matchData.value.homeTeam.teamId.toString()
+    const awayTeamId = matchData.value.awayTeam.teamId.toString()
+
+    const homePlayersConfirmed = match.attendingPlayers[homeTeamId]?.length || 0
+    const awayPlayersConfirmed = match.attendingPlayers[awayTeamId]?.length || 0
+
+    if (homePlayersConfirmed === 0 && awayPlayersConfirmed === 0) {
+      validationMessage.value = 'No hay jugadores confirmados para ningún equipo. Debes confirmar la plantilla de ambos equipos antes de iniciar el partido.'
+      showValidationModal.value = true
+    } else if (homePlayersConfirmed === 0) {
+      validationMessage.value = `Falta confirmar la plantilla del equipo ${matchData.value.homeTeam.teamName}. Debes confirmar jugadores de ambos equipos para iniciar el partido.`
+      showValidationModal.value = true
+    } else if (awayPlayersConfirmed === 0) {
+      validationMessage.value = `Falta confirmar la plantilla del equipo ${matchData.value.awayTeam.teamName}. Debes confirmar jugadores de ambos equipos para iniciar el partido.`
+      showValidationModal.value = true
+    } else {
+      // Todo está correcto, iniciar el partido
+      startMatch()
+    }
+  } catch (error) {
+    console.error('Error validating match start:', error)
+    validationMessage.value = 'Error al validar el estado del partido. Por favor, inténtalo de nuevo.'
+    showValidationModal.value = true
+  }
+}
+
+// Función para iniciar el partido
+const startMatch = () => {
+  if (!matchData.value?.matchId) return
+
+  // Navegar a la vista de gestión del partido en vivo
+  router.push(`/match-live/${matchData.value.matchId}`)
 }
 
 // Función para confirmar la plantilla de jugadores asistentes
@@ -432,6 +532,16 @@ const loadMatchData = async () => {
   } finally {
     loading.value = false
   }
+}
+
+// Funciones del modal de validación
+const closeValidationModal = () => {
+  showValidationModal.value = false
+  validationMessage.value = ''
+}
+
+const handleValidationConfirm = () => {
+  closeValidationModal()
 }
 
 onMounted(async () => {
@@ -839,6 +949,105 @@ watch(currentTeam, async () => {
   transform: none;
   box-shadow: none;
   opacity: 0.7;
+}
+
+.btn-start-match {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  border: none;
+  color: white;
+  padding: 1rem 2rem;
+  border-radius: 1rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 280px;
+  justify-content: center;
+  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+}
+
+.btn-start-match:hover {
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
+}
+
+.match-icon {
+  font-size: 1.2rem;
+  animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+
+  0%,
+  20%,
+  50%,
+  80%,
+  100% {
+    transform: translateY(0);
+  }
+
+  40% {
+    transform: translateY(-5px);
+  }
+
+  60% {
+    transform: translateY(-3px);
+  }
+}
+
+.match-info-status {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  max-width: 500px;
+  text-align: center;
+}
+
+.team-status-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.team-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+}
+
+.team-status.confirmed {
+  background: rgba(34, 197, 94, 0.2);
+  border-color: #22c55e;
+  color: #22c55e;
+}
+
+.team-status:not(.confirmed) {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
+.team-indicator {
+  font-size: 1.1rem;
+  min-width: 24px;
+}
+
+.info-text {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.9rem;
+  margin: 0;
+  font-style: italic;
 }
 
 .lineup-status {

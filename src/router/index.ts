@@ -74,6 +74,15 @@ const router = createRouter({
       component: () => import('../views/MatchVersus.vue'),
     },
     {
+      path: '/match-live/:matchId',
+      name: 'match-live',
+      component: () => import('../views/MatchLive.vue'),
+      meta: {
+        requiresAuth: true,
+        requiredRoles: ['admin', 'team'],
+      },
+    },
+    {
       path: '/admin/team-players',
       name: 'admin-team-players',
       component: () => import('../views/AdminTeamPlayers.vue'),
