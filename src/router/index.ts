@@ -69,6 +69,11 @@ const router = createRouter({
       component: () => import('../views/TournamentDetail.vue'),
     },
     {
+      path: '/match-versus/:matchId',
+      name: 'match-versus',
+      component: () => import('../views/MatchVersus.vue'),
+    },
+    {
       path: '/admin/team-players',
       name: 'admin-team-players',
       component: () => import('../views/AdminTeamPlayers.vue'),

@@ -73,3 +73,72 @@ export interface CreatePlayerResponse {
 
 // Interfaz para la respuesta de obtener jugadores
 export type GetPlayersResponse = Player[]
+
+// Tipos específicos para Match Versus
+export interface PlayerFormation {
+  player: Player
+  x: number // Posición X en el campo (0-100%)
+  y: number // Posición Y en el campo (0-100%)
+}
+
+export interface TeamLineup {
+  teamId: number
+  teamName: string
+  teamLogo?: string
+  formation: string // Ej: "4-4-2", "3-5-2", "4-3-3"
+  players: PlayerFormation[]
+}
+
+export interface MatchVersus {
+  matchId: number
+  homeTeam: TeamLineup
+  awayTeam: TeamLineup
+  matchDate?: string
+  stadium?: string
+}
+
+// Posiciones predefinidas para diferentes formaciones tácticas
+export const FORMATIONS = {
+  '4-4-2': [
+    // Portero
+    { x: 50, y: 90 },
+    // Defensas
+    { x: 20, y: 75 }, { x: 40, y: 75 }, { x: 60, y: 75 }, { x: 80, y: 75 },
+    // Mediocampo
+    { x: 25, y: 55 }, { x: 45, y: 55 }, { x: 55, y: 55 }, { x: 75, y: 55 },
+    // Delanteros
+    { x: 35, y: 25 }, { x: 65, y: 25 }
+  ],
+  '4-3-3': [
+    // Portero
+    { x: 50, y: 90 },
+    // Defensas
+    { x: 20, y: 75 }, { x: 40, y: 75 }, { x: 60, y: 75 }, { x: 80, y: 75 },
+    // Mediocampo
+    { x: 35, y: 55 }, { x: 50, y: 55 }, { x: 65, y: 55 },
+    // Delanteros
+    { x: 25, y: 25 }, { x: 50, y: 25 }, { x: 75, y: 25 }
+  ],
+  '3-5-2': [
+    // Portero
+    { x: 50, y: 90 },
+    // Defensas
+    { x: 30, y: 75 }, { x: 50, y: 75 }, { x: 70, y: 75 },
+    // Mediocampo
+    { x: 15, y: 55 }, { x: 35, y: 55 }, { x: 50, y: 55 }, { x: 65, y: 55 }, { x: 85, y: 55 },
+    // Delanteros
+    { x: 40, y: 25 }, { x: 60, y: 25 }
+  ],
+  '5-3-2': [
+    // Portero
+    { x: 50, y: 90 },
+    // Defensas
+    { x: 15, y: 75 }, { x: 30, y: 75 }, { x: 50, y: 75 }, { x: 70, y: 75 }, { x: 85, y: 75 },
+    // Mediocampo
+    { x: 35, y: 55 }, { x: 50, y: 55 }, { x: 65, y: 55 },
+    // Delanteros
+    { x: 40, y: 25 }, { x: 60, y: 25 }
+  ]
+} as const
+
+export type FormationType = keyof typeof FORMATIONS

@@ -137,7 +137,35 @@ export const matchesService = {
       console.error('Error fetching matches:', error)
       throw error
     }
-  }, // Actualizar un partido
+  },
+
+  // Obtener un partido específico por ID
+  async getMatchById(matchId: number): Promise<Match | null> {
+    try {
+      const response = await fetch(`${API_BASE}/matches/${matchId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          return null
+        }
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.message || 'Error fetching match')
+      }
+
+      const data = await response.json()
+      return data.data || data
+    } catch (error) {
+      console.error('Error fetching match:', error)
+      return null
+    }
+  },
+
+  // Actualizar un partido
   async updateMatch(matchId: number, updates: Partial<Match>): Promise<Match> {
     try {
       const response = await fetch(`${API_BASE}/matches/${matchId}`, {
