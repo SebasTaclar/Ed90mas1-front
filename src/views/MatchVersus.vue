@@ -43,7 +43,7 @@
             class="team-logo-header">
           <div class="team-info">
             <h2>{{ currentTeamLineup?.teamName }}</h2>
-            <p class="probable-xi">FORMACIÓN 1-3-3</p>
+            <p class="probable-xi">PLANTILLA COMPLETA</p>
           </div>
         </div>
 
@@ -64,6 +64,12 @@
             <!-- Líneas básicas del campo -->
             <div class="field-center-line"></div>
             <div class="field-center-circle"></div>
+            <!-- Porterías -->
+            <div class="goal-top"></div>
+            <div class="goal-bottom"></div>
+            <!-- Puntos de penalti -->
+            <div class="penalty-spot-top"></div>
+            <div class="penalty-spot-bottom"></div>
           </div>
 
           <!-- Jugadores distribuidos en formación simple -->
@@ -230,21 +236,29 @@ const formatMatchDate = (dateString: string): string => {
   })
 }
 
-// Función para calcular posición del jugador en formación 1-3-3
+// Función para calcular posición del jugador en formación completa
 const getPlayerPosition = (index: number): Record<string, string> => {
-  // Formación 1-3-3 definida con mejor espaciado: 1 portero, 3 defensas, 3 delanteros
-  const formation133 = [
-    // Portero - más atrás
-    { x: 50, y: 88 },
-    // Línea defensiva (3 jugadores) - mejor espaciados
-    { x: 20, y: 65 }, { x: 50, y: 65 }, { x: 80, y: 65 },
-    // Línea ofensiva (3 jugadores) - mejor espaciados
-    { x: 20, y: 25 }, { x: 50, y: 25 }, { x: 80, y: 25 }
+  // Formación completa para 15 jugadores distribuidos en 5 líneas
+  const completeFormation = [
+    // Portero (1 jugador)
+    { x: 50, y: 90 },
+
+    // Línea defensiva (4 jugadores)
+    { x: 15, y: 75 }, { x: 38, y: 75 }, { x: 62, y: 75 }, { x: 85, y: 75 },
+
+    // Línea de mediocampo defensivo (3 jugadores)
+    { x: 25, y: 60 }, { x: 50, y: 60 }, { x: 75, y: 60 },
+
+    // Línea de mediocampo ofensivo (4 jugadores)
+    { x: 15, y: 40 }, { x: 38, y: 40 }, { x: 62, y: 40 }, { x: 85, y: 40 },
+
+    // Línea delantera (3 jugadores)
+    { x: 25, y: 20 }, { x: 50, y: 20 }, { x: 75, y: 20 }
   ]
 
   // Si hay menos jugadores de los esperados, usar las primeras posiciones
-  if (index < formation133.length) {
-    const position = formation133[index]
+  if (index < completeFormation.length) {
+    const position = completeFormation[index]
     return {
       position: 'absolute',
       top: position.y + '%',
@@ -253,15 +267,15 @@ const getPlayerPosition = (index: number): Record<string, string> => {
     }
   }
 
-  // Si hay más de 7 jugadores, distribuir los extras en líneas adicionales
-  const extraIndex = index - formation133.length
-  const extraRow = Math.floor(extraIndex / 3)
-  const extraCol = extraIndex % 3
+  // Si hay más de 15 jugadores, distribuir los extras en las bandas
+  const extraIndex = index - completeFormation.length
+  const extraRow = Math.floor(extraIndex / 2)
+  const isLeft = extraIndex % 2 === 0
 
   return {
     position: 'absolute',
-    top: (45 + extraRow * 20) + '%', // Más espacio vertical entre filas extras
-    left: (20 + extraCol * 30) + '%', // Más espacio horizontal
+    top: (30 + extraRow * 15) + '%',
+    left: isLeft ? '5%' : '95%',
     transform: 'translate(-50%, -50%)'
   }
 }
@@ -492,9 +506,9 @@ watch(currentTeam, async () => {
 <style scoped>
 .match-versus {
   min-height: 100vh;
-  background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
   color: white;
-  padding: 1rem;
+  padding: 0;
 }
 
 .match-header {
@@ -502,23 +516,29 @@ watch(currentTeam, async () => {
   align-items: center;
   gap: 1rem;
   margin-bottom: 2rem;
+  padding: 4rem 2rem 1.5rem 2rem;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .back-button {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(30, 41, 59, 0.8);
+  border: 1px solid rgba(71, 85, 105, 0.5);
   color: white;
   padding: 0.5rem 1rem;
   border-radius: 0.5rem;
   cursor: pointer;
   transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
 }
 
 .back-button:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(51, 65, 85, 0.9);
+  border-color: rgba(71, 85, 105, 0.7);
 }
 
 .match-info h1 {
@@ -538,78 +558,110 @@ watch(currentTeam, async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 2rem;
-  margin-bottom: 2rem;
+  gap: 3rem;
+  margin-bottom: 3rem;
+  padding: 0 2rem;
 }
 
 .team-nav-btn {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
-  background: rgba(255, 255, 255, 0.1);
-  border: 2px solid transparent;
+  gap: 1rem;
+  background: rgba(30, 41, 59, 0.8);
+  border: 2px solid rgba(71, 85, 105, 0.5);
   color: white;
-  padding: 1rem 2rem;
-  border-radius: 1rem;
+  padding: 2rem 1.5rem;
+  border-radius: 1.5rem;
   cursor: pointer;
   transition: all 0.3s ease;
-  font-size: 1.1rem;
-  font-weight: 600;
+  font-size: 1.2rem;
+  font-weight: 700;
+  min-width: 200px;
+  text-align: center;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 32px rgba(15, 23, 42, 0.3);
 }
 
 .team-nav-btn.active {
-  background: rgba(34, 197, 94, 0.2);
-  border-color: #22c55e;
+  background: rgba(59, 130, 246, 0.3);
+  border-color: #3b82f6;
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(59, 130, 246, 0.4);
 }
 
 .team-nav-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(51, 65, 85, 0.9);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 36px rgba(15, 23, 42, 0.4);
 }
 
 .team-logo-small {
-  width: 24px;
-  height: 24px;
+  width: 60px;
+  height: 60px;
   border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  transition: all 0.3s ease;
 }
 
 .vs-indicator {
-  font-size: 1.5rem;
-  font-weight: bold;
-  background: linear-gradient(45deg, #22c55e, #10b981);
+  font-size: 2rem;
+  font-weight: 900;
+  background: linear-gradient(45deg, #3b82f6, #60a5fa);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
+  padding: 1rem;
+  border-radius: 50%;
+  background-color: rgba(30, 41, 59, 0.8);
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(59, 130, 246, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+  animation: pulse 2s infinite;
 }
 
 .team-lineup-container {
   display: flex;
   justify-content: center;
-  padding: 1rem 0;
+  padding: 0 2rem 2rem;
 }
 
 .team-card {
-  max-width: 800px;
+  max-width: 900px;
   width: 100%;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 1rem;
-  padding: 2rem;
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(30, 41, 59, 0.8);
+  border-radius: 2rem;
+  padding: 2.5rem;
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(71, 85, 105, 0.3);
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.5);
 }
 
 .team-header {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  margin-bottom: 2rem;
+  gap: 2rem;
+  margin-bottom: 3rem;
   text-align: center;
   justify-content: center;
+  padding: 2rem;
+  background: rgba(51, 65, 85, 0.4);
+  border-radius: 1.5rem;
+  border: 1px solid rgba(71, 85, 105, 0.3);
 }
 
 .team-logo-header {
-  width: 60px;
-  height: 60px;
+  width: 80px;
+  height: 80px;
   border-radius: 50%;
+  object-fit: cover;
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
 .team-info h2 {
@@ -629,10 +681,11 @@ watch(currentTeam, async () => {
 .no-players {
   text-align: center;
   padding: 3rem 2rem;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(30, 41, 59, 0.6);
   border-radius: 1rem;
   margin: 2rem 0;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(71, 85, 105, 0.3);
+  backdrop-filter: blur(10px);
 }
 
 .no-players-icon {
@@ -656,28 +709,52 @@ watch(currentTeam, async () => {
 }
 
 .team-info-text {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(51, 65, 85, 0.6);
   padding: 1rem;
   border-radius: 0.5rem;
   margin-top: 1rem;
   font-size: 0.9rem !important;
+  border: 1px solid rgba(71, 85, 105, 0.3);
 }
 
 .field-view {
   position: relative;
-  background: linear-gradient(180deg, #22c55e 0%, #16a34a 100%);
+  background:
+    linear-gradient(135deg, #1e293b 0%, #334155 50%, #475569 100%),
+    radial-gradient(ellipse at center, rgba(34, 197, 94, 0.2) 0%, rgba(16, 185, 129, 0.15) 30%, rgba(30, 41, 59, 0.3) 70%, rgba(30, 41, 59, 0.5) 100%);
   border-radius: 1rem;
-  aspect-ratio: 3/2;
+  aspect-ratio: 5/4;
   margin-bottom: 2rem;
   overflow: hidden;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-  min-height: 400px;
+  box-shadow:
+    0 20px 40px rgba(15, 23, 42, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 0 60px rgba(34, 197, 94, 0.1);
+  min-height: 550px;
+  border: 3px solid rgba(30, 41, 59, 0.8);
+  backdrop-filter: blur(10px);
+}.field-view::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      transparent 0px,
+      transparent 28px,
+      rgba(255, 255, 255, 0.1) 28px,
+      rgba(255, 255, 255, 0.1) 30px
+    ),
+    radial-gradient(ellipse 60% 40% at 50% 50%, rgba(34, 197, 94, 0.15) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 1;
 }
 
 .field-background {
   position: absolute;
   inset: 0;
   pointer-events: none;
+  z-index: 2;
 }
 
 .field-center-line {
@@ -685,25 +762,111 @@ watch(currentTeam, async () => {
   top: 50%;
   left: 0;
   right: 0;
-  height: 2px;
-  background: rgba(255, 255, 255, 0.8);
+  height: 3px;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.9) 10%, rgba(34, 197, 94, 0.4) 50%, rgba(255, 255, 255, 0.9) 90%, transparent 100%);
   transform: translateY(-50%);
+  box-shadow: 0 0 15px rgba(34, 197, 94, 0.3);
 }
 
 .field-center-circle {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 100px;
-  height: 100px;
-  border: 2px solid rgba(255, 255, 255, 0.8);
+  width: 120px;
+  height: 120px;
+  border: 3px solid rgba(255, 255, 255, 0.9);
   border-radius: 50%;
   transform: translate(-50%, -50%);
+  box-shadow:
+    0 0 20px rgba(34, 197, 94, 0.3),
+    inset 0 0 20px rgba(34, 197, 94, 0.1);
+}
+
+.field-center-circle::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 15px rgba(34, 197, 94, 0.5);
+}
+
+/* Áreas de penalti */
+.field-background::before {
+  content: '';
+  position: absolute;
+  top: 20%;
+  left: 30%;
+  right: 30%;
+  height: 25%;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.25);
+}
+
+.field-background::after {
+  content: '';
+  position: absolute;
+  bottom: 20%;
+  left: 30%;
+  right: 30%;
+  height: 25%;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.25);
+}
+
+/* Porterías */
+.field-view .goal-top,
+.field-view .goal-bottom {
+  position: absolute;
+  left: 45%;
+  right: 45%;
+  height: 6px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.9), rgba(34, 197, 94, 0.6), rgba(255, 255, 255, 0.9));
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.4);
+  border-radius: 2px;
+}
+
+.field-view .goal-top {
+  top: 0;
+}
+
+.field-view .goal-bottom {
+  bottom: 0;
+}
+
+/* Círculos de penalti */
+.field-view .penalty-spot-top,
+.field-view .penalty-spot-bottom {
+  position: absolute;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 50%;
+  transform: translateX(-50%);
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.4);
+}
+
+.field-view .penalty-spot-top {
+  top: 30%;
+}
+
+.field-view .penalty-spot-bottom {
+  bottom: 30%;
 }
 
 .players-formation {
   position: absolute;
   inset: 0;
+  z-index: 10;
 }
 
 .player-item {
@@ -727,8 +890,14 @@ watch(currentTeam, async () => {
 }
 
 .player-item.player-selected .player-photo-container {
-  background: #22c55e;
-  box-shadow: 0 0 20px rgba(34, 197, 94, 0.6);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.9) 0%, rgba(147, 197, 253, 0.8) 100%);
+  border-color: #60a5fa;
+  box-shadow: 0 0 25px rgba(59, 130, 246, 0.7);
+}
+
+.player-item.player-selected .player-number {
+  background: linear-gradient(135deg, #60a5fa 0%, #93c5fd 100%);
+  box-shadow: 0 0 15px rgba(96, 165, 250, 0.6);
 }
 
 .player-photo-container {
@@ -741,8 +910,8 @@ watch(currentTeam, async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 3px solid #1e40af;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  border: 3px solid rgba(59, 130, 246, 0.8);
+  box-shadow: 0 4px 12px rgba(30, 58, 138, 0.4);
   transition: all 0.3s ease;
   flex-shrink: 0;
 }
@@ -757,7 +926,7 @@ watch(currentTeam, async () => {
 .player-initials {
   font-size: 0.8rem;
   font-weight: bold;
-  color: #1e40af;
+  color: #1e3a8a;
 }
 
 .player-number {
@@ -766,7 +935,7 @@ watch(currentTeam, async () => {
   right: -8px;
   width: 24px;
   height: 24px;
-  background: #1e40af;
+  background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
   color: white;
   border-radius: 50%;
   font-size: 0.8rem;
@@ -775,6 +944,7 @@ watch(currentTeam, async () => {
   justify-content: center;
   font-weight: bold;
   border: 2px solid white;
+  box-shadow: 0 2px 8px rgba(30, 58, 138, 0.3);
 }
 
 .player-name {
@@ -783,26 +953,29 @@ watch(currentTeam, async () => {
   color: white;
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
   white-space: nowrap;
-  background: rgba(30, 64, 175, 0.9);
+  background: linear-gradient(135deg, rgba(30, 58, 138, 0.95) 0%, rgba(59, 130, 246, 0.9) 100%);
   padding: 0.25rem 0.5rem;
   border-radius: 0.3rem;
   min-width: fit-content;
   max-width: 120px;
   overflow: hidden;
   text-overflow: ellipsis;
+  border: 1px solid rgba(147, 197, 253, 0.3);
+  box-shadow: 0 2px 8px rgba(30, 58, 138, 0.3);
 }
 
 .selection-summary {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(30, 41, 59, 0.6);
   border-radius: 0.5rem;
   padding: 1.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(71, 85, 105, 0.3);
+  backdrop-filter: blur(10px);
 }
 
 .selection-summary h3 {
   margin: 0 0 1rem 0;
   font-size: 1.2rem;
-  color: #22c55e;
+  color: #60a5fa;
 }
 
 .selected-players-list {
@@ -815,8 +988,8 @@ watch(currentTeam, async () => {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  background: rgba(34, 197, 94, 0.2);
-  border: 1px solid #22c55e;
+  background: rgba(59, 130, 246, 0.2);
+  border: 1px solid #3b82f6;
   padding: 0.5rem 1rem;
   border-radius: 2rem;
   font-size: 0.9rem;
@@ -850,8 +1023,8 @@ watch(currentTeam, async () => {
 }
 
 .btn-confirm-lineup {
-  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
-  border: none;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  border: 2px solid rgba(59, 130, 246, 0.5);
   color: white;
   padding: 1rem 2rem;
   border-radius: 1rem;
@@ -864,13 +1037,14 @@ watch(currentTeam, async () => {
   gap: 0.5rem;
   min-width: 280px;
   justify-content: center;
-  box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3);
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+  backdrop-filter: blur(10px);
 }
 
 .btn-confirm-lineup:hover:not(:disabled) {
-  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(34, 197, 94, 0.4);
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
 }
 
 .btn-confirm-lineup:disabled {
@@ -882,12 +1056,13 @@ watch(currentTeam, async () => {
 }
 
 .match-info-status {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(30, 41, 59, 0.6);
   border-radius: 0.75rem;
   padding: 1.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(71, 85, 105, 0.3);
   max-width: 500px;
   text-align: center;
+  backdrop-filter: blur(10px);
 }
 
 .team-status-info {
@@ -903,15 +1078,15 @@ watch(currentTeam, async () => {
   gap: 0.5rem;
   padding: 0.75rem 1rem;
   border-radius: 0.5rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(51, 65, 85, 0.4);
+  border: 1px solid rgba(71, 85, 105, 0.3);
   transition: all 0.3s ease;
 }
 
 .team-status.confirmed {
-  background: rgba(34, 197, 94, 0.2);
-  border-color: #22c55e;
-  color: #22c55e;
+  background: rgba(59, 130, 246, 0.2);
+  border-color: #3b82f6;
+  color: #60a5fa;
 }
 
 .team-status:not(.confirmed) {
@@ -957,9 +1132,9 @@ watch(currentTeam, async () => {
 }
 
 .lineup-status.success {
-  background: rgba(34, 197, 94, 0.2);
-  border: 1px solid #22c55e;
-  color: #22c55e;
+  background: rgba(59, 130, 246, 0.2);
+  border: 1px solid #3b82f6;
+  color: #60a5fa;
 }
 
 .lineup-status.error {
@@ -969,7 +1144,7 @@ watch(currentTeam, async () => {
 }
 
 .lineup-status.info {
-  background: rgba(59, 130, 246, 0.2);
+  background: rgba(4, 46, 114, 0.2);
   border: 1px solid #3b82f6;
   color: #3b82f6;
 }
@@ -991,7 +1166,7 @@ watch(currentTeam, async () => {
   width: 40px;
   height: 40px;
   border: 4px solid rgba(255, 255, 255, 0.3);
-  border-left-color: #22c55e;
+  border-left-color: #3b82f6;
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
@@ -1002,16 +1177,29 @@ watch(currentTeam, async () => {
   }
 }
 
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
   .match-versus {
-    padding: 0.5rem;
+    padding: 0;
   }
 
   .match-header {
     flex-direction: column;
     align-items: flex-start;
-    gap: 0.5rem;
+    gap: 1rem;
+    padding: 3rem 1rem 1rem 1rem;
+    margin-bottom: 1.5rem;
   }
 
   .match-info h1 {
@@ -1020,16 +1208,49 @@ watch(currentTeam, async () => {
 
   .team-navigation {
     flex-direction: column;
-    gap: 1rem;
+    gap: 2rem;
+    padding: 0 1rem;
+    margin-bottom: 2rem;
   }
 
   .team-nav-btn {
     width: 100%;
     justify-content: center;
+    min-width: unset;
+    padding: 1.5rem;
+    flex-direction: row;
+    gap: 1rem;
+  }
+
+  .team-logo-small {
+    width: 40px;
+    height: 40px;
+  }
+
+  .vs-indicator {
+    width: 60px;
+    height: 60px;
+    font-size: 1.5rem;
+  }
+
+  .team-lineup-container {
+    padding: 0 1rem 1rem;
   }
 
   .team-card {
-    padding: 1rem;
+    padding: 1.5rem;
+    border-radius: 1.5rem;
+  }
+
+  .team-header {
+    padding: 1.5rem;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+
+  .team-logo-header {
+    width: 60px;
+    height: 60px;
   }
 
   .team-info h2 {
@@ -1046,8 +1267,8 @@ watch(currentTeam, async () => {
   }
 
   .field-view {
-    aspect-ratio: 5/4;
-    min-height: 320px;
+    aspect-ratio: 4/3;
+    min-height: 420px;
   }
 
   .btn-confirm-lineup {
@@ -1063,6 +1284,33 @@ watch(currentTeam, async () => {
 }
 
 @media (max-width: 480px) {
+  .team-nav-btn {
+    padding: 1.25rem;
+    font-size: 1rem;
+  }
+
+  .team-logo-small {
+    width: 36px;
+    height: 36px;
+  }
+
+  .vs-indicator {
+    width: 50px;
+    height: 50px;
+    font-size: 1.25rem;
+  }
+
+  .team-header {
+    padding: 1rem;
+    gap: 1rem;
+    flex-direction: column;
+  }
+
+  .team-logo-header {
+    width: 50px;
+    height: 50px;
+  }
+
   .player-photo-container {
     width: 45px;
     height: 45px;
@@ -1081,8 +1329,8 @@ watch(currentTeam, async () => {
   }
 
   .field-view {
-    aspect-ratio: 4/3;
-    min-height: 280px;
+    aspect-ratio: 3/2;
+    min-height: 380px;
   }
 
   .btn-confirm-lineup {
