@@ -4,19 +4,19 @@
       <MainBanner />
     </section>
     <section id="ongoing_tournaments" class="section offset">
-      <OngoingTournaments />
+      <OngoingTournaments :tournaments="tournaments" :loading="loading" :error="error" @retry="loadTournaments" />
     </section>
     <section class="section offset">
       <TopTeams />
     </section>
     <section class="section offset">
-      <UpcomingTournaments />
+      <UpcomingTournaments :tournaments="tournaments" :loading="loading" :error="error" @retry="loadTournaments" />
     </section>
     <section class="section offset">
       <TopPlayers />
     </section>
     <section id="our_work" class="section offset">
-      <FinishedTournaments />
+      <FinishedTournaments :tournaments="tournaments" :loading="loading" :error="error" @retry="loadTournaments" />
     </section>
     <section class="section offset">
       <Sponsors />
@@ -28,6 +28,8 @@
 </template>
 
 <script setup lang="ts">
+import { onMounted } from 'vue'
+import { useTournaments } from '@/composables/useTournaments'
 import MainBanner from '@/components/MainBanner.vue';
 import TopPlayers from '@/components/TopPlayers.vue';
 import TopTeams from '@/components/TopTeams.vue';
@@ -40,6 +42,14 @@ import Footer_ from "@/components/Footer_.vue";
 defineOptions({
   name: 'HomeView',
 });
+
+// Un solo llamado para todos los componentes de torneos
+const { tournaments, loading, error, loadTournaments } = useTournaments()
+
+// Cargar torneos una sola vez al montar el componente
+onMounted(() => {
+  loadTournaments()
+})
 
 </script>
 
@@ -79,7 +89,7 @@ defineOptions({
     padding-top: 80px;
     margin-top: -70px;
   }
-  
+
   #ongoing_tournaments {
     padding-top: 90px;
     margin-top: -80px;

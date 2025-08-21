@@ -21,7 +21,7 @@
       </div>
 
       <!-- Spinner de carga -->
-      <div v-if="loading" class="loading-container">
+      <div v-if="props.loading" class="loading-container">
         <div class="modern-spinner">
           <div class="spinner-ring"></div>
           <div class="spinner-ring"></div>
@@ -31,13 +31,13 @@
       </div>
 
       <!-- Mensaje de error -->
-      <div v-else-if="error" class="error-container">
+      <div v-else-if="props.error" class="error-container">
         <div class="error-icon">
           <span>⚠️</span>
         </div>
         <h3>Oops! Algo salió mal</h3>
-        <p>{{ error }}</p>
-        <button @click="loadTournaments" class="retry-button">
+        <p>{{ props.error }}</p>
+        <button @click="emit('retry')" class="retry-button">
           <span>🔄</span>
           Reintentar
         </button>
@@ -149,19 +149,27 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, onUnmounted } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useTournaments } from '@/composables/useTournaments'
 import type { Tournament } from '@/types/TournamentType'
 
 defineOptions({
   name: 'UpcomingTournaments'
 });
 
-const router = useRouter()
+// Props recibidas del componente padre (Home.vue)
+const props = defineProps<{
+  tournaments: Tournament[]
+  loading: boolean
+  error: string | null
+}>()
 
-// Composable para gestión de torneos
-const { tournaments, loading, error, loadTournaments } = useTournaments()
+// Emit para notificar al padre
+const emit = defineEmits<{
+  retry: []
+}>()
+
+const router = useRouter()
 
 // Timer para actualizar countdown
 const countdownTimer = ref<number>()
@@ -189,7 +197,7 @@ const availableYears = computed(() => {
 // Computed para filtrar solo próximos torneos
 const upcomingTournaments = computed(() => {
   const now = new Date()
-  let tournamentsList = tournaments.value
+  let tournamentsList = props.tournaments
     .filter(tournament => {
       const startDate = new Date(tournament.startDate)
       return startDate > now
@@ -302,9 +310,7 @@ const updateCountdown = () => {
 }
 
 // Cargar datos al montar el componente
-onMounted(async () => {
-  await loadTournaments()
-
+onMounted(() => {
   // Actualizar countdown cada minuto
   countdownTimer.value = setInterval(updateCountdown, 60000)
 })

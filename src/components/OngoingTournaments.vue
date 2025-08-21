@@ -19,7 +19,7 @@
       </div>
 
       <!-- Spinner de carga -->
-      <div v-if="loading" class="loading-container">
+      <div v-if="props.loading" class="loading-container">
         <div class="modern-spinner">
           <div class="spinner-ring"></div>
           <div class="spinner-ring"></div>
@@ -29,13 +29,13 @@
       </div>
 
       <!-- Mensaje de error -->
-      <div v-else-if="error" class="error-container">
+      <div v-else-if="props.error" class="error-container">
         <div class="error-icon">
           <span>⚠️</span>
         </div>
         <h3>Oops! Algo salió mal</h3>
-        <p>{{ error }}</p>
-        <button @click="loadTournaments" class="retry-button">
+        <p>{{ props.error }}</p>
+        <button @click="emit('retry')" class="retry-button">
           <span>🔄</span>
           Reintentar
         </button>
@@ -127,24 +127,32 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { useTournaments } from '@/composables/useTournaments'
 import type { Tournament } from '@/types/TournamentType'
 
 defineOptions({
   name: 'OngoingTournaments'
 });
 
-const router = useRouter()
+// Props recibidas del componente padre (Home.vue)
+const props = defineProps<{
+  tournaments: Tournament[]
+  loading: boolean
+  error: string | null
+}>()
 
-// Composable para gestión de torneos
-const { tournaments, loading, error, loadTournaments } = useTournaments()
+// Emit para notificar al padre
+const emit = defineEmits<{
+  retry: []
+}>()
+
+const router = useRouter()
 
 // Computed para filtrar solo torneos que ya han iniciado (no futuros)
 const activeTournaments = computed(() => {
   const now = new Date()
-  return tournaments.value
+  return props.tournaments
     .filter(tournament => {
       const startDate = new Date(tournament.startDate)
       const endDate = new Date(tournament.endDate)
@@ -219,11 +227,6 @@ const handleImageError = (event: Event) => {
   const img = event.target as HTMLImageElement
   img.src = '/images/torneo_encurso_M.jpg'
 }
-
-// Cargar torneos al montar el componente
-onMounted(() => {
-  loadTournaments()
-})
 </script>
 
 <style scoped>
