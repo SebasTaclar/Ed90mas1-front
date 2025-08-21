@@ -128,7 +128,7 @@
                 <span class="player-name">{{ getPlayerName(selectedPlayer) }}</span>
                 <span class="team-name">({{ selectedTeam === 'home' ? matchData?.homeTeam.teamName :
                   matchData?.awayTeam.teamName
-                  }})</span>
+                }})</span>
               </div>
             </div>
 
@@ -741,11 +741,9 @@ const loadMatchData = async () => {
       throw new Error(`Partido no encontrado para ID: ${matchId}`)
     }
 
-    // Cargar jugadores de ambos equipos
-    const [homePlayersResponse, awayPlayersResponse] = await Promise.all([
-      playerService.getPlayersByTeam(match.homeTeamId).catch(() => ({ success: false, data: [] })),
-      playerService.getPlayersByTeam(match.awayTeamId).catch(() => ({ success: false, data: [] }))
-    ])
+    // Cargar jugadores de ambos equipos secuencialmente
+    const homePlayersResponse = await playerService.getPlayersByTeam(match.homeTeamId).catch(() => ({ success: false, data: [] }));
+    const awayPlayersResponse = await playerService.getPlayersByTeam(match.awayTeamId).catch(() => ({ success: false, data: [] }));
 
     const homePlayers = homePlayersResponse.success ? homePlayersResponse.data : []
     const awayPlayers = awayPlayersResponse.success ? awayPlayersResponse.data : []

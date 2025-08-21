@@ -590,10 +590,10 @@ watch(() => availableTournaments.value, async (newTournaments) => {
   if (newTournaments.length > 0) {
     loadingMatches.value = true
     try {
-      // Cargar partidos para todos los torneos disponibles (tanto en crear como editar)
-      await Promise.all(
-        newTournaments.map(tournament => loadTournamentMatches(tournament.id))
-      )
+      // Cargar partidos para todos los torneos disponibles secuencialmente
+      for (const tournament of newTournaments) {
+        await loadTournamentMatches(tournament.id);
+      }
     } catch (error) {
       console.error('Error cargando partidos de torneos:', error)
     } finally {

@@ -164,11 +164,10 @@ const availableTournaments = computed(() => {
 // Funciones
 const loadData = async () => {
   try {
-    await Promise.all([
-      loadTeams(),
-      loadCategories(),
-      loadTournaments()
-    ])
+    // Cargar datos secuencialmente para evitar múltiples conexiones simultáneas
+    await loadTeams()
+    await loadCategories()
+    await loadTournaments()
   } catch (err) {
     console.error('Error loading data:', err)
   } finally {

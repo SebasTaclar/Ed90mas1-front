@@ -200,10 +200,9 @@ const handleDelete = async () => {
 onMounted(async () => {
   try {
     clearError();
-    const [categoriesResult, teamsResult] = await Promise.all([
-      loadCategories(),
-      loadTeams()
-    ]);
+    // Cargar datos secuencialmente para evitar múltiples conexiones simultáneas
+    const categoriesResult = await loadCategories();
+    const teamsResult = await loadTeams();
 
     if (!categoriesResult.success) {
       console.error('Error al cargar categorías:', categoriesResult.message);

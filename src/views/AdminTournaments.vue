@@ -159,7 +159,7 @@
             <div class="no-tournaments-icon">🏆</div>
             <p>No hay torneos registrados {{ selectedStatusFilter
               || selectedCategoryFilter ? ' con los filtros aplicados' : ''
-              }}</p>
+            }}</p>
           </div>
         </div>
       </div>
@@ -264,12 +264,26 @@ const filteredTournaments = computed(() => {
 // Funciones
 const loadData = async () => {
   try {
-    // Cargar todos los datos en paralelo
-    const results = await Promise.allSettled([
-      loadTournaments(),
-      loadCategories(),
-      loadTeams()
-    ])
+    // Cargar datos secuencialmente para evitar múltiples conexiones simultáneas
+    const results = [];
+
+    try {
+      results.push({ status: 'fulfilled', value: await loadTournaments() });
+    } catch (error) {
+      results.push({ status: 'rejected', reason: error });
+    }
+
+    try {
+      results.push({ status: 'fulfilled', value: await loadCategories() });
+    } catch (error) {
+      results.push({ status: 'rejected', reason: error });
+    }
+
+    try {
+      results.push({ status: 'fulfilled', value: await loadTeams() });
+    } catch (error) {
+      results.push({ status: 'rejected', reason: error });
+    }
 
     // Verificar si alguna carga falló y reportar errores
     results.forEach((result, index) => {

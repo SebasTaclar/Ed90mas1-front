@@ -123,11 +123,10 @@ const loadData = async () => {
     isLoading.value = true;
 
     if (userRole.value === 'admin') {
-      await Promise.all([
-        loadTeams(),
-        loadTournaments(),
-        loadCategories()
-      ]);
+      // Cargar datos secuencialmente para evitar múltiples conexiones simultáneas
+      await loadTeams();
+      await loadTournaments();
+      await loadCategories();
     } else if (userRole.value === 'team') {
       const teamId = getUserTeamId();
       if (teamId) {

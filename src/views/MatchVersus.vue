@@ -412,19 +412,18 @@ const loadMatchData = async () => {
 
     console.log('Datos del partido obtenidos:', match)
 
-    // Cargar jugadores de ambos equipos
+    // Cargar jugadores de ambos equipos secuencialmente
     console.log(`Cargando jugadores del equipo local (${match.homeTeamId}) y visitante (${match.awayTeamId})...`)
 
-    const [homePlayersResponse, awayPlayersResponse] = await Promise.all([
-      playerService.getPlayersByTeam(match.homeTeamId).catch(err => {
-        console.error(`Error cargando jugadores del equipo local ${match.homeTeamId}:`, err)
-        return { success: false, data: [], message: err.message }
-      }),
-      playerService.getPlayersByTeam(match.awayTeamId).catch(err => {
-        console.error(`Error cargando jugadores del equipo visitante ${match.awayTeamId}:`, err)
-        return { success: false, data: [], message: err.message }
-      })
-    ])
+    const homePlayersResponse = await playerService.getPlayersByTeam(match.homeTeamId).catch(err => {
+      console.error(`Error cargando jugadores del equipo local ${match.homeTeamId}:`, err)
+      return { success: false, data: [], message: err.message }
+    });
+
+    const awayPlayersResponse = await playerService.getPlayersByTeam(match.awayTeamId).catch(err => {
+      console.error(`Error cargando jugadores del equipo visitante ${match.awayTeamId}:`, err)
+      return { success: false, data: [], message: err.message }
+    });
 
     // Procesar respuestas de jugadores
     const homePlayers = homePlayersResponse.success ? homePlayersResponse.data : []
@@ -733,18 +732,18 @@ watch(currentTeam, async () => {
   min-height: 550px;
   border: 3px solid rgba(30, 41, 59, 0.8);
   backdrop-filter: blur(10px);
-}.field-view::before {
+}
+
+.field-view::before {
   content: '';
   position: absolute;
   inset: 0;
   background:
-    repeating-linear-gradient(
-      90deg,
+    repeating-linear-gradient(90deg,
       transparent 0px,
       transparent 28px,
       rgba(255, 255, 255, 0.1) 28px,
-      rgba(255, 255, 255, 0.1) 30px
-    ),
+      rgba(255, 255, 255, 0.1) 30px),
     radial-gradient(ellipse 60% 40% at 50% 50%, rgba(34, 197, 94, 0.15) 0%, transparent 60%);
   pointer-events: none;
   z-index: 1;
@@ -1178,10 +1177,13 @@ watch(currentTeam, async () => {
 }
 
 @keyframes pulse {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 1;
     transform: scale(1);
   }
+
   50% {
     opacity: 0.8;
     transform: scale(1.05);
