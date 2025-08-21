@@ -51,7 +51,7 @@
         </div>
       </div>
 
-      <div class="actions-row">
+      <div v-if="showAdminActions" class="actions-row">
         <button @click="openCreateMatchModal" class="btn-create-match">
           <span class="btn-icon">⚽</span>
           <span class="btn-text">Agregar Partido Eliminatorio</span>
@@ -87,7 +87,7 @@
               <div class="col-round">Fase</div>
               <div class="col-location">Lugar</div>
               <div class="col-status">Estado</div>
-              <div class="col-actions">Acciones</div>
+              <div v-if="showAdminActions" class="col-actions">Acciones</div>
             </div>
 
             <div v-for="match in matchesForDate" :key="match.id" class="table-row" :class="getRowClass(match)">
@@ -160,7 +160,7 @@
                 </span>
               </div>
 
-              <div class="col-actions">
+              <div v-if="showAdminActions" class="col-actions">
                 <div class="action-buttons">
                   <button @click="goToMatchVersus(match)" class="edit-btn match-versus"
                     :disabled="!match.homeTeam || !match.awayTeam" title="Confirmar jugadores del partido">
@@ -209,6 +209,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuth } from '@/composables/useAuth'
 import type { Match } from '@/services/matchesService'
 import { matchesService } from '@/services/matchesService'
 import CreateMatchPopup from '@/components/CreateMatchPopup.vue'
@@ -231,6 +232,32 @@ const emit = defineEmits<{
 }>()
 
 const router = useRouter()
+const { isAdmin, initAuth, currentUser, userRole, isAuthenticated } = useAuth()
+
+// Asegurar que el auth esté inicializado
+initAuth()
+
+// Debug: verificar el estado de autenticación
+console.log('🔐 Auth Debug:', {
+  isAuthenticated: isAuthenticated.value,
+  isAdmin: isAdmin.value,
+  currentUser: currentUser.value,
+  userRole: userRole.value
+})
+
+// Control de acceso real basado en autenticación
+const showAdminActions = computed(() => {
+  // Múltiples verificaciones para asegurar que solo admin vea las acciones
+  const hasUser = currentUser.value !== null
+  const isLoggedIn = isAuthenticated.value
+  const hasAdminRole = userRole.value === 'admin'
+  const isAdminByService = isAdmin.value
+
+  console.log('🔒 Access Control:', { hasUser, isLoggedIn, hasAdminRole, isAdminByService })
+
+  // Solo mostrar si TODAS las condiciones se cumplen
+  return hasUser && isLoggedIn && (hasAdminRole || isAdminByService)
+})
 
 // Estado de filtros
 const selectedTeam = ref('')
@@ -1034,6 +1061,11 @@ const handleValidationConfirm = () => {
   gap: 1rem;
 }
 
+/* Grid sin columna de acciones (para usuarios no admin) */
+.table-header:not(:has(.col-actions)) {
+  grid-template-columns: 100px 1fr 180px 200px 180px;
+}
+
 .table-row {
   display: grid;
   grid-template-columns: 100px 1fr 180px 200px 180px 200px;
@@ -1041,6 +1073,11 @@ const handleValidationConfirm = () => {
   gap: 1rem;
   border-bottom: 1px solid var(--app-border-color);
   transition: background-color var(--transition-normal);
+}
+
+/* Grid sin columna de acciones (para usuarios no admin) */
+.table-row:not(:has(.col-actions)) {
+  grid-template-columns: 100px 1fr 180px 200px 180px;
 }
 
 .table-row:hover {
@@ -1499,6 +1536,12 @@ const handleValidationConfirm = () => {
     grid-template-columns: 80px 1fr 150px 160px 130px 180px;
   }
 
+  /* Grid sin columna de acciones en tablets */
+  .table-header:not(:has(.col-actions)),
+  .table-row:not(:has(.col-actions)) {
+    grid-template-columns: 80px 1fr 150px 160px 130px;
+  }
+
   .team-name {
     font-size: 0.8rem;
   }
@@ -1556,6 +1599,13 @@ const handleValidationConfirm = () => {
 
   .table-header,
   .table-row {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+
+  /* En móviles tanto admin como no admin usan el mismo grid */
+  .table-header:not(:has(.col-actions)),
+  .table-row:not(:has(.col-actions)) {
     grid-template-columns: 1fr;
     gap: 0.5rem;
   }
