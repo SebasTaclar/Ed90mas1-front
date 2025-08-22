@@ -2,19 +2,35 @@
   <div class="match-versus">
     <!-- Header con información del partido -->
     <div class="match-header">
-      <button @click="goBack" class="back-button">
+      <div class="header-left">
+        <button @click="goBack" class="back-button">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="m15 18-6-6 6-6" />
         </svg>
         Volver
-      </button>
-
-      <div class="match-info">
-        <h1>{{ matchData?.homeTeam.teamName }} vs {{ matchData?.awayTeam.teamName }}</h1>
-        <div class="match-details" v-if="matchData?.matchDate">
-          <span class="match-date">{{ formatMatchDate(matchData.matchDate) }}</span>
-          <span class="match-stadium" v-if="matchData.stadium">{{ matchData.stadium }}</span>
+        </button>
+        <div class="match-info">
+          <h1>{{ matchData?.homeTeam.teamName }} <span class="vs-mini">vs</span> {{ matchData?.awayTeam.teamName }}</h1>
+          <div class="match-details" v-if="matchData?.matchDate">
+            <span class="match-date">{{ formatMatchDate(matchData.matchDate) }}</span>
+            <span class="match-stadium" v-if="matchData.stadium">{{ matchData.stadium }}</span>
+          </div>
         </div>
+      </div>
+      <div class="header-right">
+        <!-- <div class="teams-status" v-if="matchData">
+          <span class="team-chip" :class="{ ok: homeTeamHasPlayers }" :title="homeTeamHasPlayers ? 'Mínimo cumplido' : 'Faltan jugadores'">
+            🏠 {{ matchData.homeTeam.teamName }}: <strong>{{ (matchData.attendingPlayers?.[homeTeamId]?.length)||0 }}</strong>
+          </span>
+          <span class="team-chip" :class="{ ok: awayTeamHasPlayers }" :title="awayTeamHasPlayers ? 'Mínimo cumplido' : 'Faltan jugadores'">
+            ✈️ {{ matchData.awayTeam.teamName }}: <strong>{{ (matchData.attendingPlayers?.[awayTeamId]?.length)||0 }}</strong>
+          </span>
+        </div> -->
+        <button @click="checkAndStartMatch" class="btn-start-match compact" :disabled="!canStartMatch">
+          <span class="match-icon">⚽</span>
+          <span>{{ canStartMatch ? 'Ir a Iniciar Partido' : 'Faltan Jugadores' }}</span>
+          <span class="match-arrow" v-if="canStartMatch">→</span>
+        </button>
       </div>
     </div>
 
@@ -33,6 +49,26 @@
           class="team-logo-small">
         {{ matchData?.awayTeam.teamName }}
       </button>
+    </div>
+
+  <!-- Botón removido de posición inferior; ahora en header -->
+
+    <!-- Modal de confirmación -->
+    <div v-if="showConfirmationModal" class="modal-overlay" @click="closeModal">
+      <div class="modal-content" @click.stop>
+        <div class="modal-header">
+          <h3 class="modal-title">
+            <span class="warning-icon">⚠️</span>
+            Falta confirmación de jugadores
+          </h3>
+        </div>
+        <div class="modal-body">
+          <p class="modal-message">{{ confirmationMessage }}</p>
+        </div>
+        <div class="modal-footer">
+          <button @click="closeModal" class="btn-modal-close">Entendido</button>
+        </div>
+      </div>
     </div>
 
     <!-- Vista principal del equipo -->
@@ -73,10 +109,11 @@
           </div>
 
           <!-- Jugadores distribuidos en formación simple -->
-          <div class="players-formation">
+          <div class="players-formation" :class="{ 'locked': !canEditCurrentTeam }">
             <div v-for="(player, index) in currentTeamLineup?.players" :key="player.id" class="player-item"
-              :class="{ 'player-selected': selectedPlayers.includes(player.id) }" :style="getPlayerPosition(index)"
-              @click="togglePlayerSelection(player.id)">
+              :class="{ 'player-selected': selectedPlayers.includes(player.id), 'disabled': !canEditCurrentTeam }" :style="getPlayerPosition(index)"
+              @click="togglePlayerSelection(player.id)"
+              :title="!canEditCurrentTeam ? 'Plantilla confirmada. Pulsa Editar Plantilla para modificar.' : 'Click para (des)seleccionar'">
               <div class="player-photo-container">
                 <img v-if="player.photoPath" :src="player.photoPath" :alt="getPlayerName(player)" class="player-photo"
                   @error="handlePhotoError">
@@ -91,23 +128,37 @@
         </div>
 
         <!-- Lista de jugadores seleccionados -->
-        <div class="selection-summary" v-if="selectedPlayers.length > 0">
+    <div class="selection-summary" v-if="selectedPlayers.length > 0">
           <h3>Jugadores Convocados ({{ selectedPlayers.length }})</h3>
           <div class="selected-players-list">
             <div v-for="playerId in selectedPlayers" :key="playerId" class="selected-player-chip">
               <span>{{ getSelectedPlayerName(playerId) }}</span>
-              <button @click="togglePlayerSelection(playerId)" class="remove-player-btn">×</button>
+      <button @click="togglePlayerSelection(playerId)" class="remove-player-btn" :disabled="!canEditCurrentTeam">×</button>
             </div>
           </div>
         </div>
 
         <!-- Botones de acción -->
         <div class="match-actions">
-          <button v-if="selectedPlayers.length > 0" @click="confirmTeamLineup" :disabled="isConfirmingLineup"
-            class="btn-confirm-lineup">
-            <span v-if="isConfirmingLineup">⏳ Confirmando...</span>
-            <span v-else>✅ Confirmar Plantilla ({{ selectedPlayers.length }} jugadores)</span>
-          </button>
+          <!-- Botones de flujo edición / confirmación -->
+          <div class="lineup-buttons">
+            <template v-if="!currentTeamConfirmed">
+              <button v-if="selectedPlayers.length > 0" @click="confirmTeamLineup" :disabled="isConfirmingLineup" class="btn-confirm-lineup">
+                <span v-if="isConfirmingLineup">⏳ Confirmando...</span>
+                <span v-else>✅ Confirmar Plantilla ({{ selectedPlayers.length }} jugadores)</span>
+              </button>
+            </template>
+            <template v-else>
+              <button v-if="!editingCurrentTeam" class="btn-edit-lineup" @click="startEditingLineup">✏️ Editar Plantilla</button>
+              <div v-else class="edit-actions">
+                <button class="btn-cancel-edit" @click="cancelEditingLineup">↩️ Cancelar</button>
+                <button class="btn-confirm-lineup" @click="confirmTeamLineup" :disabled="isConfirmingLineup || selectedPlayers.length === 0">
+                  <span v-if="isConfirmingLineup">⏳ Guardando...</span>
+                  <span v-else>💾 Guardar Cambios ({{ selectedPlayers.length }})</span>
+                </button>
+              </div>
+            </template>
+          </div>
 
           <div v-if="attendingPlayersStatus" class="lineup-status" :class="attendingPlayersStatus.type">
             <span class="status-icon">{{ attendingPlayersStatus.icon }}</span>
@@ -167,6 +218,7 @@ interface SimpleMatchVersus {
   awayTeam: SimpleTeamLineup
   matchDate?: string
   stadium?: string
+  attendingPlayers?: { [teamId: string]: number[] }
 }
 
 // Estado reactivo
@@ -174,6 +226,8 @@ const loading = ref(true)
 const currentTeam = ref<'home' | 'away'>('home')
 const matchData = ref<SimpleMatchVersus | null>(null)
 const selectedPlayers = ref<number[]>([])
+// Modo edición de la plantilla del equipo actual
+const editingCurrentTeam = ref(false)
 const isConfirmingLineup = ref(false)
 const attendingPlayersStatus = ref<{
   type: 'success' | 'error' | 'info'
@@ -181,32 +235,41 @@ const attendingPlayersStatus = ref<{
   message: string
 } | null>(null)
 
+// Variables para el modal de confirmación
+const showConfirmationModal = ref(false)
+const confirmationMessage = ref('')
+
 // Computed para obtener la alineación del equipo actual
 const currentTeamLineup = computed((): SimpleTeamLineup | null => {
   if (!matchData.value) return null
   return currentTeam.value === 'home' ? matchData.value.homeTeam : matchData.value.awayTeam
 })
 
-// Computed para verificar si se puede iniciar el partido
-const canStartMatch = computed((): boolean => {
-  return homeTeamHasPlayers.value && awayTeamHasPlayers.value
+// IDs útiles
+const homeTeamId = computed(() => matchData.value?.homeTeam.teamId.toString() || '')
+const awayTeamId = computed(() => matchData.value?.awayTeam.teamId.toString() || '')
+
+// Confirmación por equipo basada en attendingPlayers (mínimo 5 jugadores)
+const MIN_PLAYERS = 5
+const homeTeamHasPlayers = computed(() => {
+  if (!matchData.value) return false
+  const list = matchData.value.attendingPlayers?.[homeTeamId.value]
+  return Array.isArray(list) && list.length >= MIN_PLAYERS
+})
+const awayTeamHasPlayers = computed(() => {
+  if (!matchData.value) return false
+  const list = matchData.value.attendingPlayers?.[awayTeamId.value]
+  return Array.isArray(list) && list.length >= MIN_PLAYERS
 })
 
-// Computed para verificar si el equipo local tiene jugadores confirmados
-const homeTeamHasPlayers = computed((): boolean => {
-  if (!matchData.value) return false
-  // Simular verificación de jugadores confirmados del equipo local
-  // Aquí deberías verificar si hay attendingPlayers para el equipo local
-  return true // Por ahora siempre true para pruebas, implementar lógica real después
-})
+// Equipo actual confirmado
+const currentTeamConfirmed = computed(() => currentTeam.value === 'home' ? homeTeamHasPlayers.value : awayTeamHasPlayers.value)
 
-// Computed para verificar si el equipo visitante tiene jugadores confirmados
-const awayTeamHasPlayers = computed((): boolean => {
-  if (!matchData.value) return false
-  // Simular verificación de jugadores confirmados del equipo visitante
-  // Aquí deberías verificar si hay attendingPlayers para el equipo visitante
-  return true // Por ahora siempre true para pruebas, implementar lógica real después
-})
+// ¿Se puede iniciar partido? (ambos con mínimo requerido)
+const canStartMatch = computed(() => homeTeamHasPlayers.value && awayTeamHasPlayers.value)
+
+// ¿Se puede editar plantilla (si no confirmada o en modo edición)?
+const canEditCurrentTeam = computed(() => !currentTeamConfirmed.value || editingCurrentTeam.value)
 
 // Funciones de utilidad
 const getPlayerName = (player: Player): string => {
@@ -282,12 +345,26 @@ const getPlayerPosition = (index: number): Record<string, string> => {
 
 // Funciones para manejar la selección de jugadores
 const togglePlayerSelection = (playerId: number) => {
-  const index = selectedPlayers.value.indexOf(playerId)
-  if (index === -1) {
-    selectedPlayers.value.push(playerId)
-  } else {
-    selectedPlayers.value.splice(index, 1)
-  }
+  if (!canEditCurrentTeam.value) return
+  const i = selectedPlayers.value.indexOf(playerId)
+  if (i === -1) selectedPlayers.value.push(playerId)
+  else selectedPlayers.value.splice(i, 1)
+}
+
+const startEditingLineup = () => {
+  if (!matchData.value) return
+  const teamId = currentTeam.value === 'home' ? homeTeamId.value : awayTeamId.value
+  const existing = matchData.value.attendingPlayers?.[teamId] || []
+  selectedPlayers.value = [...existing]
+  editingCurrentTeam.value = true
+}
+
+const cancelEditingLineup = () => {
+  if (!matchData.value) return
+  const teamId = currentTeam.value === 'home' ? homeTeamId.value : awayTeamId.value
+  const existing = matchData.value.attendingPlayers?.[teamId] || []
+  selectedPlayers.value = [...existing]
+  editingCurrentTeam.value = false
 }
 
 const getSelectedPlayerName = (playerId: number): string => {
@@ -297,6 +374,39 @@ const getSelectedPlayerName = (playerId: number): string => {
 
 const goBack = () => {
   router.back()
+}
+
+// Función para navegar a la vista de partido en vivo
+const goToMatchLive = () => {
+  if (!matchData.value) return
+  router.push(`/match-live/${matchData.value.matchId}`)
+}
+
+// Validar e iniciar partido
+const checkAndStartMatch = () => {
+  if (!matchData.value) return
+  if (canStartMatch.value) {
+    goToMatchLive()
+    return
+  }
+  const homeCount = matchData.value.attendingPlayers?.[homeTeamId.value]?.length || 0
+  const awayCount = matchData.value.attendingPlayers?.[awayTeamId.value]?.length || 0
+  if (homeCount < MIN_PLAYERS && awayCount < MIN_PLAYERS) {
+    confirmationMessage.value = `Ambos equipos necesitan al menos ${MIN_PLAYERS} jugadores confirmados (Actual: ${homeCount} y ${awayCount})`
+  } else if (homeCount < MIN_PLAYERS) {
+    confirmationMessage.value = `${matchData.value.homeTeam.teamName} necesita mínimo ${MIN_PLAYERS} jugadores (actual: ${homeCount})`
+  } else if (awayCount < MIN_PLAYERS) {
+    confirmationMessage.value = `${matchData.value.awayTeam.teamName} necesita mínimo ${MIN_PLAYERS} jugadores (actual: ${awayCount})`
+  } else {
+    confirmationMessage.value = 'Falta confirmación de plantillas.'
+  }
+  showConfirmationModal.value = true
+}
+
+// Función para cerrar el modal de confirmación
+const closeModal = () => {
+  showConfirmationModal.value = false
+  confirmationMessage.value = ''
 }
 
 // Función para intentar iniciar el partido (con validación)
@@ -322,16 +432,13 @@ const confirmTeamLineup = async () => {
       [currentTeamId.toString()]: [...selectedPlayers.value]
     }
 
-    // Actualizar el partido con los jugadores asistentes
-    await matchesService.updateMatch(matchData.value.matchId, {
-      attendingPlayers: updatedAttendingPlayers
-    })
+  // Actualizar backend
+  await matchesService.updateMatch(matchData.value.matchId, { attendingPlayers: updatedAttendingPlayers })
+  // Actualizar local
+  matchData.value.attendingPlayers = updatedAttendingPlayers
+  editingCurrentTeam.value = false
 
-    attendingPlayersStatus.value = {
-      type: 'success',
-      icon: '✅',
-      message: `Plantilla de ${currentTeam.value === 'home' ? matchData.value.homeTeam.teamName : matchData.value.awayTeam.teamName} confirmada exitosamente`
-    }
+  attendingPlayersStatus.value = { type: 'success', icon: '✅', message: `Plantilla de ${currentTeam.value === 'home' ? matchData.value.homeTeam.teamName : matchData.value.awayTeam.teamName} confirmada` }
 
     // Limpiar el mensaje después de 3 segundos
     setTimeout(() => {
@@ -359,33 +466,16 @@ const confirmTeamLineup = async () => {
 // Función para cargar los jugadores asistentes existentes
 const loadExistingAttendingPlayers = async () => {
   if (!matchData.value) return
-
   try {
+    // obtener datos frescos para sincronizar
     const match = await matchesService.getMatchById(matchData.value.matchId)
-    if (match?.attendingPlayers) {
-      const currentTeamId = currentTeam.value === 'home'
-        ? matchData.value.homeTeam.teamId
-        : matchData.value.awayTeam.teamId
-
-      const teamAttendingPlayers = match.attendingPlayers[currentTeamId.toString()]
-      if (teamAttendingPlayers && Array.isArray(teamAttendingPlayers)) {
-        selectedPlayers.value = [...teamAttendingPlayers]
-
-        // Mostrar información de que ya hay jugadores confirmados
-        attendingPlayersStatus.value = {
-          type: 'info',
-          icon: 'ℹ️',
-          message: `${teamAttendingPlayers.length} jugadores ya confirmados para este equipo`
-        }
-
-        // Limpiar el mensaje después de 3 segundos
-        setTimeout(() => {
-          attendingPlayersStatus.value = null
-        }, 3000)
-      }
-    }
-  } catch (error) {
-    console.error('Error loading existing attending players:', error)
+    if (match?.attendingPlayers) matchData.value.attendingPlayers = match.attendingPlayers
+    const teamId = currentTeam.value === 'home' ? homeTeamId.value : awayTeamId.value
+    const existing = matchData.value.attendingPlayers?.[teamId] || []
+    selectedPlayers.value = [...existing]
+    editingCurrentTeam.value = false
+  } catch (e) {
+    console.error('Error loading existing attending players:', e)
   }
 }
 
@@ -442,20 +532,11 @@ const loadMatchData = async () => {
     // Construir el objeto de datos del partido
     matchData.value = {
       matchId: match.id || matchId,
-      homeTeam: {
-        teamId: match.homeTeamId,
-        teamName: match.homeTeam?.name || 'Equipo Local',
-        teamLogo: match.homeTeam?.logoPath || '/images/logo.png',
-        players: processPlayers(homePlayers)
-      },
-      awayTeam: {
-        teamId: match.awayTeamId,
-        teamName: match.awayTeam?.name || 'Equipo Visitante',
-        teamLogo: match.awayTeam?.logoPath || '/images/logo.png',
-        players: processPlayers(awayPlayers)
-      },
+      homeTeam: { teamId: match.homeTeamId, teamName: match.homeTeam?.name || 'Equipo Local', teamLogo: match.homeTeam?.logoPath || '/images/logo.png', players: processPlayers(homePlayers) },
+      awayTeam: { teamId: match.awayTeamId, teamName: match.awayTeam?.name || 'Equipo Visitante', teamLogo: match.awayTeam?.logoPath || '/images/logo.png', players: processPlayers(awayPlayers) },
       matchDate: match.matchDate || match.scheduledDate,
-      stadium: match.location || match.venue
+      stadium: match.location || match.venue,
+      attendingPlayers: match.attendingPlayers || {}
     }
 
     console.log('Datos del partido procesados correctamente:', matchData.value)
@@ -466,20 +547,11 @@ const loadMatchData = async () => {
     // En lugar de datos mock, mostrar un mensaje de error al usuario
     matchData.value = {
       matchId: parseInt(route.params.matchId as string) || 0,
-      homeTeam: {
-        teamId: 0,
-        teamName: 'Error cargando equipo local',
-        teamLogo: '/images/logo.png',
-        players: []
-      },
-      awayTeam: {
-        teamId: 0,
-        teamName: 'Error cargando equipo visitante',
-        teamLogo: '/images/logo.png',
-        players: []
-      },
+      homeTeam: { teamId: 0, teamName: 'Error cargando equipo local', teamLogo: '/images/logo.png', players: [] },
+      awayTeam: { teamId: 0, teamName: 'Error cargando equipo visitante', teamLogo: '/images/logo.png', players: [] },
       matchDate: new Date().toISOString(),
-      stadium: 'Error cargando datos'
+      stadium: 'Error cargando datos',
+      attendingPlayers: {}
     }
   } finally {
     loading.value = false
@@ -512,20 +584,63 @@ watch(currentTeam, async () => {
 
 .match-header {
   display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+  padding: 6rem 2rem 1rem 2rem;
+  background: transparent;
+  backdrop-filter: none;
+  border-bottom: none;
+  position: relative;
+}
+
+.header-left { display: flex; align-items: flex-start; gap: 1.45rem; }
+.header-right { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.match-info h1 { font-size: 1.6rem; margin: 0 0 .35rem 0; letter-spacing: .5px; }
+.vs-mini { font-size: 0.9rem; font-weight: 600; opacity: .8; margin: 0 .35rem; }
+
+.teams-status { display: flex; gap: .5rem; flex-wrap: wrap; }
+.team-chip {
+  background: rgba(30, 41, 59, 0.55);
+  border: 1px solid rgba(255,255,255,0.15);
+  padding: .45rem .75rem;
+  font-size: .7rem;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  border-radius: 0.6rem;
+  display: flex;
   align-items: center;
-  gap: 1rem;
-  margin-bottom: 2rem;
-  padding: 4rem 2rem 1.5rem 2rem;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  gap: .4rem;
+  line-height: 1;
+  position: relative;
+
+}
+.team-chip strong { font-size: .8rem; }
+.team-chip.ok { background: rgba(0, 94, 180, 0.55); border-color: rgba(0,94,180,0.5); box-shadow: 0 0 0 1px rgba(0,94,180,0.25), 0 0 10px rgba(0,94,180,0.35); }
+
+.btn-start-match.compact {
+  padding: 0.85rem 1.4rem;
+  min-width: unset;
+  font-size: 0.95rem;
+  border-radius: 0.9rem;
+  display: flex;
+  gap: .55rem;
+  box-shadow: 0 4px 18px rgba(0,94,180,0.35);
+}
+.btn-start-match.compact:disabled {
+  background: linear-gradient(135deg, #475569 0%, #334155 100%);
+  box-shadow: none;
+  cursor: not-allowed;
+  opacity: .65;
 }
 
 .back-button {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  background: rgba(30, 41, 59, 0.8);
+  background: rgba(30, 41, 59, 0);
   border: 1px solid rgba(71, 85, 105, 0.5);
   color: white;
   padding: 0.5rem 1rem;
@@ -533,6 +648,7 @@ watch(currentTeam, async () => {
   cursor: pointer;
   transition: all 0.3s ease;
   backdrop-filter: blur(10px);
+    margin-top: 1.3rem;
 }
 
 .back-button:hover {
@@ -868,6 +984,21 @@ watch(currentTeam, async () => {
   z-index: 10;
 }
 
+.players-formation.locked .player-item {
+  cursor: not-allowed;
+  opacity: 0.55;
+  filter: grayscale(35%) brightness(0.9);
+}
+
+.players-formation.locked .player-item.player-selected {
+  opacity: 1 !important;
+  filter: none !important;
+}
+
+.player-item.disabled:hover {
+  transform: translate(-50%, -50%) !important;
+}
+
 .player-item {
   position: absolute;
   cursor: pointer;
@@ -885,18 +1016,51 @@ watch(currentTeam, async () => {
 }
 
 .player-item.player-selected {
-  filter: brightness(1.3);
+  filter: brightness(1.35) saturate(1.25);
+  transform: translate(-50%, -50%) scale(1.18) !important;
+  z-index: 20;
+}
+
+.player-item.player-selected::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 105px;
+  height: 105px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(rgba(56, 189, 248, 0.55), rgba(59,130,246,0) 70%);
+  box-shadow: 0 0 35px 10px rgba(56, 189, 248, 0.35), 0 0 60px rgba(37,99,235,0.4);
+  animation: pulseHalo 2.4s ease-in-out infinite;
+  pointer-events: none;
 }
 
 .player-item.player-selected .player-photo-container {
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.9) 0%, rgba(147, 197, 253, 0.8) 100%);
-  border-color: #60a5fa;
-  box-shadow: 0 0 25px rgba(59, 130, 246, 0.7);
+  background: linear-gradient(140deg, rgba(14, 165, 233, 0.95) 0%, rgba(59, 130, 246, 0.92) 55%, rgba(147, 197, 253, 0.85) 100%);
+  border-color: #38bdf8;
+  box-shadow: 0 0 15px rgba(56, 189, 248, 0.9), 0 0 35px rgba(59,130,246,0.7), 0 0 55px rgba(30,64,175,0.6);
+  position: relative;
 }
 
 .player-item.player-selected .player-number {
-  background: linear-gradient(135deg, #60a5fa 0%, #93c5fd 100%);
-  box-shadow: 0 0 15px rgba(96, 165, 250, 0.6);
+  background: linear-gradient(135deg, #0ea5e9 0%, #38bdf8 50%, #60a5fa 100%);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.9), 0 0 25px rgba(59,130,246,0.6);
+}
+
+.player-item.player-selected .player-name {
+  background: rgba(0,0,0,0.55);
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  box-shadow: 0 0 10px rgba(56,189,248,0.8), 0 0 25px rgba(59,130,246,0.7);
+  text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 12px rgba(56,189,248,0.8);
+  font-weight: 600;
+}
+
+@keyframes pulseHalo {
+  0% { opacity: 0.7; transform: translate(-50%, -50%) scale(0.9); }
+  50% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
+  100% { opacity: 0.65; transform: translate(-50%, -50%) scale(0.9); }
 }
 
 .player-photo-container {
@@ -1052,6 +1216,125 @@ watch(currentTeam, async () => {
   transform: none;
   box-shadow: none;
   opacity: 0.7;
+}
+
+.btn-edit-lineup {
+  background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+  border: 2px solid rgba(100,116,139,0.4);
+  color: #fff;
+  padding: 0.85rem 1.6rem;
+  border-radius: 0.9rem;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all .3s ease;
+  display: flex;
+  gap: .5rem;
+  align-items: center;
+  box-shadow: 0 4px 15px rgba(100,116,139,0.35);
+}
+.btn-edit-lineup:hover { filter: brightness(1.08); transform: translateY(-2px); }
+
+.btn-cancel-edit {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  border: 2px solid rgba(220,38,38,0.5);
+  color: #fff;
+  padding: 0.75rem 1.4rem;
+  border-radius: 0.9rem;
+  font-size: .95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all .3s ease;
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  box-shadow: 0 4px 15px rgba(220,38,38,0.35);
+}
+.btn-cancel-edit:hover { filter: brightness(1.05); transform: translateY(-2px); }
+
+.edit-actions { display: flex; gap: .75rem; flex-wrap: wrap; justify-content: center; }
+.lineup-buttons { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; }
+
+.btn-start-match {
+  background: linear-gradient(135deg, var(--primary-blue) 0%, var(--tertiary-blue) 100%);
+  border: 2px solid rgba(0, 94, 180, 0.5);
+  color: white;
+  padding: 1.2rem 2.5rem;
+  border-radius: 1.2rem;
+  font-size: 1.3rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.4s ease;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-width: 320px;
+  justify-content: center;
+  box-shadow: 0 6px 20px rgba(0, 94, 180, 0.4);
+  backdrop-filter: blur(10px);
+  animation: pulseGlow 2s infinite;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-start-match::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s ease;
+}
+
+.btn-start-match:hover::before {
+  left: 100%;
+}
+
+.btn-start-match:hover {
+  background: linear-gradient(135deg, var(--tertiary-blue) 0%, var(--dark-blue) 100%);
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 8px 25px rgba(0, 94, 180, 0.6);
+  border-color: var(--secondary-blue);
+}
+
+.btn-start-match .match-icon {
+  font-size: 1.8rem;
+  animation: bounce 1s infinite;
+}
+
+.btn-start-match .match-arrow {
+  font-size: 1.5rem;
+  font-weight: bold;
+  transition: transform 0.3s ease;
+}
+
+.btn-start-match:hover .match-arrow {
+  transform: translateX(4px);
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 6px 20px rgba(0, 94, 180, 0.4);
+  }
+  50% {
+    box-shadow: 0 8px 30px rgba(0, 94, 180, 0.7);
+  }
+}
+
+@keyframes bounce {
+  0%, 20%, 50%, 80%, 100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-4px);
+  }
+  60% {
+    transform: translateY(-2px);
+  }
 }
 
 .match-info-status {
@@ -1279,6 +1562,20 @@ watch(currentTeam, async () => {
     min-width: 250px;
   }
 
+  .btn-start-match {
+    font-size: 1.1rem;
+    padding: 1rem 2rem;
+    min-width: 280px;
+  }
+
+  .btn-start-match .match-icon {
+    font-size: 1.5rem;
+  }
+
+  .btn-start-match .match-arrow {
+    font-size: 1.2rem;
+  }
+
   .lineup-status {
     padding: 0.75rem 1rem;
     font-size: 0.9rem;
@@ -1341,6 +1638,21 @@ watch(currentTeam, async () => {
     min-width: 220px;
   }
 
+  .btn-start-match {
+    font-size: 1rem;
+    padding: 0.875rem 1.5rem;
+    min-width: 260px;
+    gap: 0.75rem;
+  }
+
+  .btn-start-match .match-icon {
+    font-size: 1.3rem;
+  }
+
+  .btn-start-match .match-arrow {
+    font-size: 1.1rem;
+  }
+
   .match-actions {
     margin-top: 1.5rem;
   }
@@ -1349,6 +1661,181 @@ watch(currentTeam, async () => {
     padding: 0.6rem 0.8rem;
     font-size: 0.8rem;
     max-width: 300px;
+  }
+}
+
+/* Estilos para la sección de inicio de partido */
+.match-start-section {
+  margin-top: 2rem;
+  margin-bottom: 2rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.btn-start-match {
+  background: linear-gradient(135deg, var(--secondary-blue) 0%, var(--primary-blue) 100%);
+  border: none;
+  color: white;
+  padding: 1rem 2rem;
+  border-radius: 12px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(0, 94, 180, 0.3);
+  text-decoration: none;
+  min-width: 280px;
+  justify-content: center;
+}
+
+.btn-start-match:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 94, 180, 0.4);
+  background: linear-gradient(135deg, var(--tertiary-blue) 0%, var(--dark-blue) 100%);
+}
+
+.btn-start-match:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 10px rgba(0, 94, 180, 0.3);
+}
+
+.match-icon {
+  font-size: 1.4rem;
+}
+
+.match-arrow {
+  font-size: 1.2rem;
+  transition: transform 0.3s ease;
+}
+
+.btn-start-match:hover .match-arrow {
+  transform: translateX(3px);
+}
+
+/* Estilos para el modal de confirmación */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(3px);
+}
+
+.modal-content {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  max-width: 450px;
+  width: 90%;
+  text-align: center;
+  position: relative;
+  animation: modalFadeIn 0.3s ease-out;
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.modal-header {
+  margin-bottom: 1.5rem;
+}
+
+.modal-title {
+  color: #dc3545;
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.warning-icon {
+  font-size: 1.5rem;
+  color: #ffc107;
+}
+
+.modal-body {
+  margin-bottom: 2rem;
+}
+
+.modal-message {
+  color: #333;
+  font-size: 1rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: center;
+}
+
+.btn-modal-close {
+  background: #6c757d;
+  border: none;
+  color: white;
+  padding: 0.75rem 2rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 120px;
+}
+
+.btn-modal-close:hover {
+  background: #5a6268;
+  transform: translateY(-1px);
+}
+
+.btn-modal-close:active {
+  transform: translateY(0);
+}
+
+/* Responsive para móviles */
+@media (max-width: 768px) {
+  .match-start-section {
+    margin-top: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .btn-start-match {
+    padding: 0.875rem 1.5rem;
+    font-size: 1rem;
+    min-width: 260px;
+  }
+
+  .modal-content {
+    padding: 1.5rem;
+    margin: 1rem;
+  }
+
+  .modal-title {
+    font-size: 1.2rem;
+  }
+
+  .modal-message {
+    font-size: 0.95rem;
   }
 }
 </style>
