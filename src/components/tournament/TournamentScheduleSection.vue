@@ -51,7 +51,7 @@
         </div>
       </div>
 
-      <div v-if="showAdminActions" class="actions-row">
+      <div class="actions-row">
         <button @click="openCreateMatchModal" class="btn-create-match">
           <span class="btn-icon">⚽</span>
           <span class="btn-text">Agregar Partido Eliminatorio</span>
@@ -59,7 +59,86 @@
       </div>
     </div>
 
-    <!-- Tabla de partidos agrupados por fecha -->
+    <!-- Botón flotante para partidos en vivo -->
+    <div v-if="liveMatches.length > 0" class="live-matches-button-container">
+      <button
+        @click="toggleLiveModal"
+        class="live-matches-button"
+        :class="{ 'active': showLiveModal }"
+      >
+        <span class="live-button-indicator">🔴</span>
+        <span class="live-button-text">Partidos en Vivo</span>
+        <span class="live-button-count">{{ liveMatches.length }}</span>
+      </button>
+    </div>
+
+    <!-- Modal de partidos en vivo -->
+    <div v-if="showLiveModal && liveMatches.length > 0" class="live-modal-overlay" @click="closeLiveModal">
+      <div class="live-modal" @click.stop>
+        <div class="live-modal-header">
+          <div class="live-modal-title">
+            <span class="live-indicator-modal">🔴</span>
+            <h3>Partidos en Vivo</h3>
+            <span class="live-auto-refresh">
+              <span class="refresh-icon">🔄</span>
+              Actualiza cada 15s
+            </span>
+          </div>
+          <button @click="closeLiveModal" class="close-modal-btn">✕</button>
+        </div>
+
+        <div class="live-modal-content">
+          <div
+            v-for="match in liveMatches"
+            :key="match.id"
+            class="live-modal-match"
+            @click="selectAndGoToLive(match)"
+          >
+            <div class="live-modal-teams">
+              <div class="live-modal-team home">
+                <img :src="match.homeTeam?.logoPath || '/images/logo.png'"
+                     :alt="match.homeTeam?.name"
+                     class="live-modal-logo"
+                     @error="handleImageError">
+                <div class="team-info">
+                  <span class="team-name">{{ match.homeTeam?.name || 'TBD' }}</span>
+                  <span class="team-score">{{ match.homeScore || 0 }}</span>
+                </div>
+              </div>
+
+              <div class="live-modal-vs">
+                <span class="vs-text">VS</span>
+                <div class="match-status">
+                  <span class="status-pulse"></span>
+                  {{ getStatusText(match.status) }}
+                </div>
+              </div>
+
+              <div class="live-modal-team away">
+                <div class="team-info">
+                  <span class="team-score">{{ match.awayScore || 0 }}</span>
+                  <span class="team-name">{{ match.awayTeam?.name || 'TBD' }}</span>
+                </div>
+                <img :src="match.awayTeam?.logoPath || '/images/logo.png'"
+                     :alt="match.awayTeam?.name"
+                     class="live-modal-logo"
+                     @error="handleImageError">
+              </div>
+            </div>
+
+            <div class="live-modal-info">
+              <span class="match-time">⏰ {{ formatTime(match.matchDate || match.scheduledDate) }}</span>
+              <span class="match-location">📍 {{ match.location || 'Sin ubicación' }}</span>
+              <span v-if="match.round" class="match-round">🏆 {{ match.round }}</span>
+            </div>
+
+            <div class="live-modal-action">
+              <span class="action-text">👁️ Ver en vivo</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>    <!-- Tabla de partidos agrupados por fecha -->
     <div class="matches-table-container">
       <div v-if="matchesLoading" class="loading">
         <div class="spinner"></div>
@@ -87,7 +166,7 @@
               <div class="col-round">Fase</div>
               <div class="col-location">Lugar</div>
               <div class="col-status">Estado</div>
-              <div v-if="showAdminActions" class="col-actions">Acciones</div>
+              <div class="col-actions">Acciones</div>
             </div>
 
             <div v-for="match in matchesForDate" :key="match.id" class="table-row" :class="getRowClass(match)">
@@ -160,7 +239,7 @@
                 </span>
               </div>
 
-              <div v-if="showAdminActions" class="col-actions">
+              <div class="col-actions">
                 <div class="action-buttons">
                   <button @click="goToMatchVersus(match)" class="edit-btn match-versus"
                     :disabled="!match.homeTeam || !match.awayTeam" title="Confirmar jugadores del partido">
@@ -207,9 +286,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAuth } from '@/composables/useAuth'
 import type { Match } from '@/services/matchesService'
 import { matchesService } from '@/services/matchesService'
 import CreateMatchPopup from '@/components/CreateMatchPopup.vue'
@@ -232,32 +310,6 @@ const emit = defineEmits<{
 }>()
 
 const router = useRouter()
-const { isAdmin, initAuth, currentUser, userRole, isAuthenticated } = useAuth()
-
-// Asegurar que el auth esté inicializado
-initAuth()
-
-// Debug: verificar el estado de autenticación
-console.log('🔐 Auth Debug:', {
-  isAuthenticated: isAuthenticated.value,
-  isAdmin: isAdmin.value,
-  currentUser: currentUser.value,
-  userRole: userRole.value
-})
-
-// Control de acceso real basado en autenticación
-const showAdminActions = computed(() => {
-  // Múltiples verificaciones para asegurar que solo admin vea las acciones
-  const hasUser = currentUser.value !== null
-  const isLoggedIn = isAuthenticated.value
-  const hasAdminRole = userRole.value === 'admin'
-  const isAdminByService = isAdmin.value
-
-  console.log('🔒 Access Control:', { hasUser, isLoggedIn, hasAdminRole, isAdminByService })
-
-  // Solo mostrar si TODAS las condiciones se cumplen
-  return hasUser && isLoggedIn && (hasAdminRole || isAdminByService)
-})
 
 // Estado de filtros
 const selectedTeam = ref('')
@@ -388,6 +440,18 @@ const completedMatches = computed(() => {
   ).length
 })
 
+// Computed para partidos en vivo
+const liveMatches = computed(() => {
+  return props.matches.filter(match => {
+    return match.status === 'in_progress' ||
+           match.status === 'in_progress_1_half' ||
+           match.status === 'in_progress_2_half' ||
+           match.status === 'finished_1_half' ||
+           match.status === 'finished_2_half' ||
+           match.status === 'penalties'
+  })
+})
+
 const clearFilters = () => {
   selectedTeam.value = ''
   selectedDate.value = ''
@@ -443,10 +507,21 @@ const formatDateGroupHeader = (dateString: string) => {
 const getStatusText = (status?: string) => {
   switch (status) {
     case 'scheduled':
+    case 'not_started':
       return 'Programado'
     case 'in_progress':
-      return 'En juego'
+    case 'in_progress_1_half':
+      return 'En juego - 1er Tiempo'
+    case 'finished_1_half':
+      return 'Descanso'
+    case 'in_progress_2_half':
+      return 'En juego - 2do Tiempo'
+    case 'finished_2_half':
+      return 'Tiempo Reglamentario'
+    case 'penalties':
+      return 'Penales'
     case 'completed':
+    case 'finished':
       return 'Finalizado'
     case 'cancelled':
       return 'Cancelado'
@@ -458,10 +533,17 @@ const getStatusText = (status?: string) => {
 const getStatusClass = (status?: string) => {
   switch (status) {
     case 'scheduled':
+    case 'not_started':
       return 'status-scheduled'
     case 'in_progress':
+    case 'in_progress_1_half':
+    case 'in_progress_2_half':
+    case 'finished_1_half':
+    case 'finished_2_half':
+    case 'penalties':
       return 'status-live'
     case 'completed':
+    case 'finished':
       return 'status-completed'
     case 'cancelled':
       return 'status-cancelled'
@@ -523,6 +605,17 @@ const goToMatchVersus = (match: Match) => {
 
   // Navegar a la vista matchVersus con el ID del partido
   router.push(`/match-versus/${match.id}`)
+}
+
+// Función para ir al partido en vivo
+const goToMatchLive = (match: Match) => {
+  if (!match.id) {
+    console.error('No se puede navegar: el partido no tiene ID')
+    return
+  }
+
+  // Navegar a la vista de partido en vivo
+  router.push(`/match-live/${match.id}`)
 }
 
 // Funciones del modal de creación
@@ -697,6 +790,10 @@ const deleteMatch = async (matchId: number) => {
 const showValidationModal = ref(false)
 const validationMessage = ref('')
 
+// Estado del modal de partidos en vivo
+const showLiveModal = ref(false)
+const refreshInterval = ref<number | null>(null)
+
 // Función para intentar iniciar un partido con validación
 const attemptStartMatch = async (match: Match) => {
   if (!match.id) {
@@ -749,6 +846,60 @@ const handleValidationConfirm = () => {
   showValidationModal.value = false
   validationMessage.value = ''
 }
+
+// Funciones para el modal de partidos en vivo
+const toggleLiveModal = () => {
+  showLiveModal.value = !showLiveModal.value
+  if (showLiveModal.value) {
+    startAutoRefresh()
+  } else {
+    stopAutoRefresh()
+  }
+}
+
+const closeLiveModal = () => {
+  showLiveModal.value = false
+  stopAutoRefresh()
+}
+
+const selectAndGoToLive = (match: Match) => {
+  if (!match.id) {
+    console.error('No se puede navegar: el partido no tiene ID')
+    return
+  }
+  closeLiveModal()
+  router.push(`/match-live/${match.id}`)
+}
+
+// Auto-refresh cada 15 segundos
+const startAutoRefresh = () => {
+  if (refreshInterval.value) {
+    clearInterval(refreshInterval.value)
+  }
+
+  refreshInterval.value = setInterval(() => {
+    if (showLiveModal.value) {
+      // Emitir evento para actualizar los datos
+      emit('match-updated')
+    }
+  }, 15000) // 15 segundos
+}
+
+const stopAutoRefresh = () => {
+  if (refreshInterval.value) {
+    clearInterval(refreshInterval.value)
+    refreshInterval.value = null
+  }
+}
+
+// Lifecycle hooks para limpiar el interval
+onMounted(() => {
+  // Se iniciará cuando se abra el modal
+})
+
+onUnmounted(() => {
+  stopAutoRefresh()
+})
 </script>
 
 <style scoped>
@@ -966,6 +1117,533 @@ const handleValidationConfirm = () => {
   font-size: 0.95rem;
 }
 
+/* Botón flotante para partidos en vivo */
+.live-matches-button-container {
+  position: fixed;
+  bottom: 500px;
+  right: 80px;
+  z-index: 999;
+}
+
+.live-matches-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  background: linear-gradient(135deg, var(--primary-blue) 0%, var(--tertiary-blue) 100%);
+  color: var(--white);
+  border: 2px solid white;
+  border-radius: 50px;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  box-shadow: 0 4px 20px rgba(60, 154, 240, 0.3);
+  font-weight: 600;
+  font-size: 0.9rem;
+  backdrop-filter: blur(10px);
+  animation: slideInFromBottom 0.5s ease-out;
+}
+
+.live-matches-button:hover {
+  background: linear-gradient(135deg, var(--tertiary-blue) 0%, var(--secondary-blue) 100%);
+  transform: translateY(-3px);
+  box-shadow: 0 6px 25px rgba(60, 154, 240, 0.4);
+  border-color: white;
+}
+
+.live-matches-button.active {
+  background: linear-gradient(135deg, var(--secondary-blue) 0%, var(--primary-blue) 100%);
+  box-shadow: 0 6px 25px rgba(60, 154, 240, 0.5);
+  border-color: white;
+}
+
+@keyframes slideInFromBottom {
+  from {
+    transform: translateY(100px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.live-button-indicator {
+  font-size: 0.8rem;
+  animation: liveBlink 2s ease-in-out infinite;
+}
+
+.live-button-text {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.live-button-count {
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--primary-blue);
+  padding: 0.25rem 0.6rem;
+  border-radius: var(--border-radius-full);
+  font-weight: 700;
+  font-size: 0.8rem;
+  min-width: 20px;
+  text-align: center;
+}
+
+/* Modal de partidos en vivo */
+.live-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  backdrop-filter: blur(5px);
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.live-modal {
+  background: var(--app-bg-primary);
+  border-radius: var(--border-radius-lg);
+  border: 2px solid var(--primary-blue);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  max-width: 600px;
+  width: 100%;
+  max-height: 80vh;
+  overflow: hidden;
+  animation: slideInModal 0.3s ease-out;
+}
+
+@keyframes slideInModal {
+  from {
+    transform: translateY(-50px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.live-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, var(--primary-blue) 0%, var(--tertiary-blue) 100%);
+  color: var(--white);
+  border-bottom: 2px solid var(--tertiary-blue);
+}
+
+.live-modal-title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.live-indicator-modal {
+  font-size: 1rem;
+  animation: liveBlink 2s ease-in-out infinite;
+}
+
+.live-modal-title h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.live-auto-refresh {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.15);
+  padding: 0.4rem 0.8rem;
+  border-radius: var(--border-radius-full);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.refresh-icon {
+  animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.close-modal-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: var(--white);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  transition: background var(--transition-normal);
+}
+
+.close-modal-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.live-modal-content {
+  padding: 1rem;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.live-modal-match {
+  background: var(--app-bg-secondary);
+  border: 1px solid var(--app-border-color);
+  border-radius: var(--border-radius-lg);
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  position: relative;
+}
+
+.live-modal-match:last-child {
+  margin-bottom: 0;
+}
+
+.live-modal-match:hover {
+  background: var(--app-bg-primary);
+  border-color: var(--primary-blue);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(60, 154, 240, 0.15);
+}
+
+.live-modal-teams {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  gap: 1rem;
+}
+
+.live-modal-team {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+}
+
+.live-modal-team.away {
+  flex-direction: row-reverse;
+}
+
+.live-modal-logo {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--app-border-color);
+}
+
+.team-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+}
+
+.live-modal-team.away .team-info {
+  text-align: right;
+}
+
+.team-name {
+  font-weight: 700;
+  color: var(--app-text-primary);
+  font-size: 1rem;
+}
+
+.team-score {
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: var(--primary-blue);
+}
+
+.live-modal-vs {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 100px;
+}
+
+.vs-text {
+  font-weight: 800;
+  color: var(--app-text-secondary);
+  font-size: 0.9rem;
+}
+
+.match-status {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: var(--primary-blue);
+  color: var(--white);
+  padding: 0.4rem 0.8rem;
+  border-radius: var(--border-radius-full);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.status-pulse {
+  width: 6px;
+  height: 6px;
+  background: var(--white);
+  border-radius: 50%;
+  animation: pulseCompact 1.5s ease-in-out infinite;
+}
+
+.live-modal-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  font-size: 0.85rem;
+  color: var(--app-text-secondary);
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.match-time,
+.match-location,
+.match-round {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-weight: 500;
+}
+
+.live-modal-action {
+  text-align: center;
+  color: var(--primary-blue);
+  font-weight: 600;
+  font-size: 0.9rem;
+  opacity: 0.8;
+  transition: opacity var(--transition-normal);
+}
+
+.live-modal-match:hover .live-modal-action {
+  opacity: 1;
+}
+
+/* Sección de partidos en vivo - Diseño flotante compacto */
+.live-matches-floating {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+  background: var(--app-bg-primary);
+  border: 2px solid var(--primary-blue);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-medium);
+  backdrop-filter: blur(10px);
+  min-width: 280px;
+  max-width: 320px;
+  animation: slideInFromRight 0.5s ease-out;
+}
+
+@keyframes slideInFromRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.live-compact-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: linear-gradient(135deg, var(--primary-blue) 0%, var(--tertiary-blue) 100%);
+  color: var(--white);
+  border-radius: var(--border-radius-lg) var(--border-radius-lg) 0 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-bottom: 1px solid var(--tertiary-blue);
+}
+
+.live-compact-header h4 {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+  flex: 1;
+  letter-spacing: 0.5px;
+}
+
+.live-indicator {
+  font-size: 0.8rem;
+  animation: liveBlink 2s ease-in-out infinite;
+}
+
+@keyframes liveBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.live-count {
+  background: rgba(255, 255, 255, 0.2);
+  color: var(--white);
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--border-radius-full);
+  font-weight: 700;
+  font-size: 0.75rem;
+  min-width: 20px;
+  text-align: center;
+}
+
+.live-matches-compact {
+  padding: 0.5rem;
+  max-height: 300px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--primary-blue) var(--app-bg-secondary);
+}
+
+.live-matches-compact::-webkit-scrollbar {
+  width: 4px;
+}
+
+.live-matches-compact::-webkit-scrollbar-track {
+  background: var(--app-bg-secondary);
+  border-radius: 2px;
+}
+
+.live-matches-compact::-webkit-scrollbar-thumb {
+  background: var(--primary-blue);
+  border-radius: 2px;
+}
+
+.live-match-compact {
+  background: var(--app-bg-secondary);
+  border: 1px solid var(--app-border-color);
+  border-radius: var(--border-radius-md);
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  position: relative;
+}
+
+.live-match-compact:last-child {
+  margin-bottom: 0;
+}
+
+.live-match-compact:hover {
+  background: var(--app-bg-primary);
+  border-color: var(--primary-blue);
+  transform: translateX(-2px);
+  box-shadow: 0 2px 12px rgba(60, 154, 240, 0.15);
+}
+
+.live-teams-compact {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+  gap: 0.5rem;
+}
+
+.live-team-compact {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.live-logo-compact {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--app-border-color);
+  flex-shrink: 0;
+}
+
+.live-name-compact {
+  font-weight: 600;
+  color: var(--app-text-primary);
+  font-size: 0.8rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+
+.live-score-compact {
+  font-size: 1.2rem;
+  font-weight: 900;
+  color: var(--primary-blue);
+  min-width: 20px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.live-vs-compact {
+  font-weight: 700;
+  color: var(--app-text-secondary);
+  font-size: 0.8rem;
+  padding: 0 0.25rem;
+  flex-shrink: 0;
+}
+
+.live-status-compact {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  justify-content: center;
+  background: var(--primary-blue);
+  color: var(--white);
+  padding: 0.3rem 0.6rem;
+  border-radius: var(--border-radius-full);
+  font-size: 0.7rem;
+  font-weight: 600;
+  margin-top: 0.5rem;
+}
+
+.live-pulse-compact {
+  width: 6px;
+  height: 6px;
+  background: var(--white);
+  border-radius: 50%;
+  animation: pulseCompact 1.5s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes pulseCompact {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.3);
+    opacity: 0.6;
+  }
+}
+
 /* Tabla */
 .matches-table-container {
   background: var(--app-bg-primary);
@@ -1061,11 +1739,6 @@ const handleValidationConfirm = () => {
   gap: 1rem;
 }
 
-/* Grid sin columna de acciones (para usuarios no admin) */
-.table-header:not(:has(.col-actions)) {
-  grid-template-columns: 100px 1fr 180px 200px 180px;
-}
-
 .table-row {
   display: grid;
   grid-template-columns: 100px 1fr 180px 200px 180px 200px;
@@ -1073,11 +1746,6 @@ const handleValidationConfirm = () => {
   gap: 1rem;
   border-bottom: 1px solid var(--app-border-color);
   transition: background-color var(--transition-normal);
-}
-
-/* Grid sin columna de acciones (para usuarios no admin) */
-.table-row:not(:has(.col-actions)) {
-  grid-template-columns: 100px 1fr 180px 200px 180px;
 }
 
 .table-row:hover {
@@ -1474,26 +2142,44 @@ const handleValidationConfirm = () => {
   font-size: 0.8rem;
   font-weight: 600;
   text-align: center;
+  white-space: nowrap;
+  border: 2px solid transparent;
+  transition: all var(--transition-normal);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .status-scheduled {
   background: #fef3c7;
   color: #d97706;
+  border-color: #f59e0b;
 }
 
 .status-live {
   background: #fecaca;
   color: #dc2626;
+  border-color: #ef4444;
+  animation: livePulse 2s ease-in-out infinite;
+}
+
+@keyframes livePulse {
+  0%, 100% {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1), 0 0 0 0 rgba(239, 68, 68, 0.4);
+  }
+  50% {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15), 0 0 0 4px rgba(239, 68, 68, 0.2);
+  }
 }
 
 .status-completed {
   background: #d1fae5;
   color: #065f46;
+  border-color: #10b981;
 }
 
 .status-cancelled {
   background: #f3f4f6;
   color: #6b7280;
+  border-color: #9ca3af;
 }
 
 /* Estados de carga */
@@ -1534,12 +2220,6 @@ const handleValidationConfirm = () => {
   .table-header,
   .table-row {
     grid-template-columns: 80px 1fr 150px 160px 130px 180px;
-  }
-
-  /* Grid sin columna de acciones en tablets */
-  .table-header:not(:has(.col-actions)),
-  .table-row:not(:has(.col-actions)) {
-    grid-template-columns: 80px 1fr 150px 160px 130px;
   }
 
   .team-name {
@@ -1584,6 +2264,70 @@ const handleValidationConfirm = () => {
     justify-content: center;
   }
 
+  /* Estilos responsivos para botón y modal de partidos en vivo */
+  .live-matches-button-container {
+    bottom: 80px;
+    right: 20px;
+  }
+
+  .live-matches-button {
+    padding: 0.6rem 1rem;
+    font-size: 0.8rem;
+  }
+
+  .live-button-text {
+    display: none;
+  }
+
+  .live-modal {
+    margin: 1rem;
+    max-width: none;
+    width: calc(100% - 2rem);
+  }
+
+  .live-modal-header {
+    padding: 1rem;
+  }
+
+  .live-modal-title h3 {
+    font-size: 1.1rem;
+  }
+
+  .live-auto-refresh {
+    display: none;
+  }
+
+  .live-modal-teams {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .live-modal-team {
+    justify-content: center;
+  }
+
+  .live-modal-team.away {
+    flex-direction: row;
+  }
+
+  .live-modal-vs {
+    min-width: auto;
+  }
+
+  .live-modal-logo {
+    width: 32px;
+    height: 32px;
+  }
+
+  .team-score {
+    font-size: 1.25rem;
+  }
+
+  .live-modal-info {
+    justify-content: center;
+    text-align: center;
+  }
+
   .modal {
     width: 95%;
     margin: 1rem;
@@ -1599,13 +2343,6 @@ const handleValidationConfirm = () => {
 
   .table-header,
   .table-row {
-    grid-template-columns: 1fr;
-    gap: 0.5rem;
-  }
-
-  /* En móviles tanto admin como no admin usan el mismo grid */
-  .table-header:not(:has(.col-actions)),
-  .table-row:not(:has(.col-actions)) {
     grid-template-columns: 1fr;
     gap: 0.5rem;
   }
