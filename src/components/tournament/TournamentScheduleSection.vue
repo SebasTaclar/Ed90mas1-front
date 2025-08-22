@@ -51,7 +51,7 @@
         </div>
       </div>
 
-      <div v-if="showAdminActions" class="actions-row">
+      <div class="actions-row">
         <button @click="openCreateMatchModal" class="btn-create-match">
           <span class="btn-icon">⚽</span>
           <span class="btn-text">Agregar Partido Eliminatorio</span>
@@ -166,7 +166,7 @@
               <div class="col-round">Fase</div>
               <div class="col-location">Lugar</div>
               <div class="col-status">Estado</div>
-              <div v-if="showAdminActions" class="col-actions">Acciones</div>
+              <div class="col-actions">Acciones</div>
             </div>
 
             <div v-for="match in matchesForDate" :key="match.id" class="table-row" :class="getRowClass(match)">
@@ -239,7 +239,7 @@
                 </span>
               </div>
 
-              <div v-if="showAdminActions" class="col-actions">
+              <div class="col-actions">
                 <div class="action-buttons">
                   <button @click="goToMatchVersus(match)" class="edit-btn match-versus"
                     :disabled="!match.homeTeam || !match.awayTeam" title="Confirmar jugadores del partido">
@@ -288,7 +288,6 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAuth } from '@/composables/useAuth'
 import type { Match } from '@/services/matchesService'
 import { matchesService } from '@/services/matchesService'
 import CreateMatchPopup from '@/components/CreateMatchPopup.vue'
@@ -311,32 +310,6 @@ const emit = defineEmits<{
 }>()
 
 const router = useRouter()
-const { isAdmin, initAuth, currentUser, userRole, isAuthenticated } = useAuth()
-
-// Asegurar que el auth esté inicializado
-initAuth()
-
-// Debug: verificar el estado de autenticación
-console.log('🔐 Auth Debug:', {
-  isAuthenticated: isAuthenticated.value,
-  isAdmin: isAdmin.value,
-  currentUser: currentUser.value,
-  userRole: userRole.value
-})
-
-// Control de acceso real basado en autenticación
-const showAdminActions = computed(() => {
-  // Múltiples verificaciones para asegurar que solo admin vea las acciones
-  const hasUser = currentUser.value !== null
-  const isLoggedIn = isAuthenticated.value
-  const hasAdminRole = userRole.value === 'admin'
-  const isAdminByService = isAdmin.value
-
-  console.log('🔒 Access Control:', { hasUser, isLoggedIn, hasAdminRole, isAdminByService })
-
-  // Solo mostrar si TODAS las condiciones se cumplen
-  return hasUser && isLoggedIn && (hasAdminRole || isAdminByService)
-})
 
 // Estado de filtros
 const selectedTeam = ref('')
@@ -1766,11 +1739,6 @@ onUnmounted(() => {
   gap: 1rem;
 }
 
-/* Grid sin columna de acciones (para usuarios no admin) */
-.table-header:not(:has(.col-actions)) {
-  grid-template-columns: 100px 1fr 180px 200px 180px;
-}
-
 .table-row {
   display: grid;
   grid-template-columns: 100px 1fr 180px 200px 180px 200px;
@@ -1778,11 +1746,6 @@ onUnmounted(() => {
   gap: 1rem;
   border-bottom: 1px solid var(--app-border-color);
   transition: background-color var(--transition-normal);
-}
-
-/* Grid sin columna de acciones (para usuarios no admin) */
-.table-row:not(:has(.col-actions)) {
-  grid-template-columns: 100px 1fr 180px 200px 180px;
 }
 
 .table-row:hover {
@@ -2259,12 +2222,6 @@ onUnmounted(() => {
     grid-template-columns: 80px 1fr 150px 160px 130px 180px;
   }
 
-  /* Grid sin columna de acciones en tablets */
-  .table-header:not(:has(.col-actions)),
-  .table-row:not(:has(.col-actions)) {
-    grid-template-columns: 80px 1fr 150px 160px 130px;
-  }
-
   .team-name {
     font-size: 0.8rem;
   }
@@ -2282,13 +2239,12 @@ onUnmounted(() => {
 
 @media (max-width: 768px) {
   .tournament-schedule {
-    padding: 0.75rem;
+    padding: 1rem;
   }
 
   .filters-container {
     flex-direction: column;
     align-items: stretch;
-    gap: 1rem;
   }
 
   .filter-group {
@@ -2297,190 +2253,41 @@ onUnmounted(() => {
 
   .stats-row {
     flex-wrap: wrap;
-    gap: 0.75rem;
-  }
-
-  .stat-item {
-    flex: 1;
-    min-width: calc(50% - 0.375rem);
-    padding: 1rem;
-    font-size: 0.9rem;
   }
 
   .actions-row {
     margin-top: 1rem;
-    flex-direction: column;
-    gap: 1rem;
   }
 
   .btn-create-match {
     width: 100%;
     justify-content: center;
-    padding: 1rem;
-    font-size: 1rem;
-  }
-
-  /* Optimización de tabla para mobile */
-  .table-header,
-  .table-row {
-    grid-template-columns: 1fr;
-    gap: 0.5rem;
-  }
-
-  .table-header {
-    display: none;
-  }
-
-  .table-row {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    padding: 1.5rem 1rem;
-    margin-bottom: 1rem;
-    border-radius: 12px;
-    border: 1px solid var(--app-border-color);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  }
-
-  .table-row:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    transform: translateY(-2px);
-  }
-
-  /* Mejorar visualización de equipos en mobile */
-  .match-teams {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    align-items: center;
-    padding: 1rem;
-    background: var(--app-bg-secondary);
-    border-radius: 8px;
-  }
-
-  .team-display {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    width: 100%;
-    justify-content: center;
-  }
-
-  .team-logo {
-    width: 32px;
-    height: 32px;
-  }
-
-  .team-name {
-    font-size: 0.95rem;
-    font-weight: 600;
-  }
-
-  .vs {
-    font-size: 1.2rem;
-    font-weight: bold;
-    color: var(--primary-blue);
-    margin: 0.5rem 0;
-  }
-
-  /* Información del partido más legible */
-  .match-info {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    text-align: center;
-  }
-
-  .match-date,
-  .match-location {
-    padding: 0.5rem;
-    background: var(--app-bg-primary);
-    border-radius: 6px;
-    font-size: 0.9rem;
-  }
-
-  .match-status {
-    padding: 0.75rem 1rem;
-    border-radius: 8px;
-    font-weight: 600;
-    text-align: center;
-    font-size: 0.9rem;
-  }
-
-  .col-actions {
-    justify-content: center;
-    border-top: 1px solid var(--app-border-color);
-    padding-top: 1rem;
-    gap: 0.75rem;
-  }
-
-  .col-actions .btn {
-    flex: 1;
-    min-width: auto;
-    padding: 0.75rem 1rem;
-    font-size: 0.9rem;
   }
 
   /* Estilos responsivos para botón y modal de partidos en vivo */
   .live-matches-button-container {
-    bottom: 20px;
+    bottom: 80px;
     right: 20px;
-    z-index: 1000;
   }
 
   .live-matches-button {
-    padding: 0.8rem 1.2rem;
-    font-size: 0.85rem;
-    min-width: auto;
-    box-shadow: 0 4px 20px rgba(60, 154, 240, 0.4);
+    padding: 0.6rem 1rem;
+    font-size: 0.8rem;
   }
 
   .live-button-text {
     display: none;
   }
 
-  .live-button-count {
-    background: rgba(255, 255, 255, 0.2);
-    padding: 0.25rem 0.5rem;
-    border-radius: 12px;
-    font-size: 0.8rem;
-    font-weight: 700;
-  }
-
   .live-modal {
     margin: 1rem;
     max-width: none;
     width: calc(100% - 2rem);
-    max-height: calc(100vh - 2rem);
-    border-radius: 16px;
   }
 
   .live-modal-header {
-    padding: 1.25rem;
-    text-align: center;
+    padding: 1rem;
   }
-
-  .live-modal-header h3 {
-    font-size: 1.2rem;
-  }
-
-  .live-modal-content {
-    padding: 0 1.25rem 1.25rem;
-    max-height: calc(100vh - 200px);
-    overflow-y: auto;
-  }
-
-  .live-match-item {
-    padding: 1.25rem;
-    margin-bottom: 1rem;
-    border-radius: 12px;
-  }
-
-  .edit-date-container,
-  .edit-location-container {
-    align-items: center;
-  }
-}
 
   .live-modal-title h3 {
     font-size: 1.1rem;
@@ -2540,13 +2347,6 @@ onUnmounted(() => {
     gap: 0.5rem;
   }
 
-  /* En móviles tanto admin como no admin usan el mismo grid */
-  .table-header:not(:has(.col-actions)),
-  .table-row:not(:has(.col-actions)) {
-    grid-template-columns: 1fr;
-    gap: 0.5rem;
-  }
-
   .table-header {
     display: none;
   }
@@ -2593,220 +2393,18 @@ onUnmounted(() => {
   }
 }
 
-/* Optimizaciones adicionales para experiencia móvil */
-@media (max-width: 768px) {
-  /* Mejorar área de toque para botones */
-  .btn {
-    min-height: 44px; /* Estándar de área de toque móvil */
-    touch-action: manipulation; /* Evita zoom en doble tap */
-  }
-
-  /* Scroll suave en contenedores */
-  .live-modal-content {
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: thin;
-  }
-
-  /* Mejorar legibilidad de texto */
-  .match-teams {
-    line-height: 1.4;
-  }
-
-  /* Espaciado consistente */
-  .table-row + .table-row {
-    margin-top: 0.75rem;
-  }
-
-  /* Feedback visual mejorado para interacciones */
-  .table-row:active {
-    transform: scale(0.98);
-    transition: transform 0.1s ease;
-  }
-
-  .live-matches-button:active {
-    transform: scale(0.95);
-  }
-
-  /* Mejor contraste para texto pequeño */
-  .match-date,
-  .match-location {
-    color: var(--app-text-primary);
-    font-weight: 500;
-  }
-}
-
-/* Optimizaciones para orientación horizontal en móviles */
-@media (max-width: 768px) and (orientation: landscape) {
-  .live-modal {
-    max-height: calc(100vh - 40px);
-    margin: 20px;
-    width: calc(100% - 40px);
-  }
-
-  .live-modal-content {
-    max-height: calc(100vh - 120px);
-  }
-
-  .stats-row {
-    flex-direction: row;
-    flex-wrap: wrap;
-  }
-
-  .stat-item {
-    min-width: calc(25% - 0.75rem);
-  }
-}
-
 @media (max-width: 480px) {
-  .tournament-schedule {
-    padding: 0.5rem;
-  }
-
-  .filters-container {
-    gap: 0.75rem;
-  }
-
-  .stats-row {
-    flex-direction: column;
-    gap: 0.75rem;
-  }
-
-  .stat-item {
-    min-width: 100%;
-    padding: 1rem;
-    text-align: center;
-  }
-
-  .table-row {
-    padding: 1.25rem 0.75rem;
-    margin-bottom: 0.75rem;
-  }
-
   .team-logo {
     width: 28px;
     height: 28px;
   }
 
   .team-name {
-    font-size: 0.85rem;
-    text-align: center;
-  }
-
-  .vs {
-    font-size: 1rem;
-    margin: 0.25rem 0;
-  }
-
-  .match-date,
-  .match-location {
-    font-size: 0.8rem;
-    padding: 0.5rem;
-  }
-
-  .match-status {
-    font-size: 0.8rem;
-    padding: 0.5rem;
-  }
-
-  .col-actions {
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-
-  .col-actions .btn {
-    width: 100%;
-    padding: 0.75rem;
-    font-size: 0.85rem;
-  }
-
-  /* Botón de partidos en vivo más compacto */
-  .live-matches-button-container {
-    bottom: 15px;
-    right: 15px;
-  }
-
-  .live-matches-button {
-    padding: 0.6rem 0.8rem;
-    font-size: 0.8rem;
-    gap: 0.25rem;
-  }
-
-  .live-button-indicator {
     font-size: 0.8rem;
   }
 
-  .live-button-count {
-    padding: 0.2rem 0.4rem;
-    font-size: 0.7rem;
-    min-width: 20px;
-    height: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  /* Modal optimizado para pantallas muy pequeñas */
-  .live-modal {
-    margin: 0.5rem;
-    width: calc(100% - 1rem);
-    max-height: calc(100vh - 1rem);
-    border-radius: 12px;
-  }
-
-  .live-modal-header {
-    padding: 1rem;
-  }
-
-  .live-modal-header h3 {
-    font-size: 1.1rem;
-  }
-
-  .live-modal-content {
-    padding: 0 1rem 1rem;
-    max-height: calc(100vh - 150px);
-  }
-
-  .live-match-item {
-    padding: 1rem;
-    margin-bottom: 0.75rem;
-    border-radius: 10px;
-  }
-
-  .live-match-teams {
-    gap: 0.5rem;
-  }
-
-  .live-match-team {
-    font-size: 0.8rem;
-  }
-
-  .live-match-score {
-    font-size: 1.1rem;
-  }
-
-  .live-match-status {
-    font-size: 0.75rem;
-    padding: 0.25rem 0.5rem;
-  }
-
-  /* Formularios más compactos */
-  .form-row {
-    gap: 0.75rem;
-  }
-
-  .form-group label {
-    font-size: 0.9rem;
-  }
-
-  .form-group input,
-  .form-group select {
-    padding: 0.75rem;
-    font-size: 0.9rem;
-  }
-
-  .btn-create-match {
-    padding: 1rem;
-    font-size: 0.95rem;
+  .stat-item {
+    padding: 0.75rem 1rem;
   }
 }
 </style>
