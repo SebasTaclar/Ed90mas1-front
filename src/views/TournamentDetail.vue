@@ -19,7 +19,8 @@
           <TournamentResultsSection v-else-if="activeSection === 'resultados'" />
 
           <!-- Sección: Clasificación -->
-          <TournamentClassificationSection v-else-if="activeSection === 'clasificacion'" />
+          <TournamentClassificationSection v-else-if="activeSection === 'clasificacion'"
+            :tournament="selectedTournament" />
 
           <!-- Sección: Rankings y encuestas -->
           <TournamentRankingsSection v-else-if="activeSection === 'rankings'" />

@@ -18,6 +18,9 @@ export interface TournamentGroup {
   teams: number[] // Array de IDs de equipos
   groupName?: string // Para compatibilidad con backend
   groupOrder?: number // Para compatibilidad con backend
+  tournamentId?: number // Para backend
+  createdAt?: string // Para backend
+  updatedAt?: string // Para backend
 }
 
 export interface TeamAssignment {
@@ -35,6 +38,10 @@ export interface TournamentConfiguration {
   groups: TournamentGroup[]
   isConfigured: boolean
   teamAssignments?: TeamAssignment[]
+  id?: number // Para backend
+  tournamentId?: number // Para backend
+  createdAt?: string // Para backend
+  updatedAt?: string // Para backend
 }
 
 export interface CreateTournamentConfigurationRequest {

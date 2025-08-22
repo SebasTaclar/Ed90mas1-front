@@ -1,5 +1,5 @@
 import { ref, type Ref } from 'vue'
-import { tournamentService } from '@/services/api/tournamentService'
+import { tournamentService, type TeamStatistics } from '@/services/api/tournamentService'
 import type { Tournament, CreateTournamentRequest } from '@/types/TournamentType'
 
 export function useTournaments() {
@@ -194,6 +194,34 @@ export function useTournaments() {
     }
   }
 
+  /**
+   * Obtener estadísticas de equipos de un torneo
+   */
+  const getTournamentTeamStatistics = async (
+    tournamentId: number,
+  ): Promise<{ success: boolean; message: string; statistics?: TeamStatistics[] }> => {
+    try {
+      loading.value = true
+      error.value = null
+
+      const statistics = await tournamentService.getTournamentTeamStatistics(tournamentId)
+
+      return {
+        success: true,
+        message: 'Estadísticas obtenidas exitosamente',
+        statistics,
+      }
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : 'Error desconocido al obtener estadísticas'
+      error.value = errorMessage
+      console.error('Error al obtener estadísticas:', err)
+      return { success: false, message: errorMessage }
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     // Estados reactivos
     tournaments,
@@ -207,6 +235,7 @@ export function useTournaments() {
     deleteTournament,
     uploadTournamentBanner,
     deleteTournamentBanner,
+    getTournamentTeamStatistics,
     clearError,
   }
 }

@@ -1,398 +1,514 @@
 <template>
- <div class="section-content">
-  <div class="section-header">
-   <h2>🏆 Tabla de Clasificación</h2>
-   <p class="section-description">Posiciones actuales de todos los equipos</p>
-  </div>
+  <div class="section-content">
+    <div class="section-header">
+      <h2>🏆 Tabla de Clasificación</h2>
+      <p class="section-description">Posiciones actuales de todos los equipos</p>
+    </div>
 
-  <div class="classification-container">
-  <!-- Info del torneo (nombre + fase de grupos) -->
-  <div class="tournament-info">
-   <div class="tournament-name">Nombre del Torneo</div>
-   <div class="tournament-phase">Fase de Grupos</div>
-  </div>
-
-   <!-- Grupos: 3 columnas con 9 equipos cada uno -->
-   <div class="groups-grid">
-      <div class="group-card">
-       <div class="group-header">Grupo A</div>
-       <div class="classification-table">
-         <div class="table-header">
-          <div class="pos">#</div>
-          <div class="team">Equipo</div>
-          <div class="points">PTS</div>
-          <div class="games">PJ</div>
-          <div class="wins">PG</div>
-          <div class="draws">PE</div>
-          <div class="losses">PP</div>
-          <div class="goals-for">GF</div>
-          <div class="goals-against">GC</div>
-          <div class="goal-diff">DG</div>
-         </div>
-         <div class="table-body">
-  <div class="table-row qualify">
-   <div class="pos">1</div>
-   <div class="team"><img src="/images/logo.png" alt="Equipo 1" @error="handleTeamImageError"><span>Equipo 1</span></div>
-   <div class="points">0</div>
-   <div class="games">0</div><div class="wins">0</div><div class="draws">0</div><div class="losses">0</div>
-   <div class="goals-for">0</div><div class="goals-against">0</div><div class="goal-diff">0</div>
-  </div>
-  <div class="table-row qualify">
-   <div class="pos">2</div>
-   <div class="team"><img src="/images/logo.png" alt="Equipo 2" @error="handleTeamImageError"><span>Equipo 2</span></div>
-   <div class="points">0</div>
-   <div class="games">0</div><div class="wins">0</div><div class="draws">0</div><div class="losses">0</div>
-   <div class="goals-for">0</div><div class="goals-against">0</div><div class="goal-diff">0</div>
-  </div>
-  <div class="table-row qualify"><div class="pos">3</div><div class="team"><img src="/images/logo.png" alt="Equipo 3" @error="handleTeamImageError"><span>Equipo 3</span></div>
-   <div class="points">0</div>
-   <div class="games">0</div><div class="wins">0</div><div class="draws">0</div><div class="losses">0</div>
-   <div class="goals-for">0</div><div class="goals-against">0</div><div class="goal-diff">0</div></div>
-  <div class="table-row qualify"><div class="pos">4</div><div class="team"><img src="/images/logo.png" alt="Equipo 4" @error="handleTeamImageError"><span>Equipo 4</span></div>
-   <div class="points">0</div>
-   <div class="games">0</div><div class="wins">0</div><div class="draws">0</div><div class="losses">0</div>
-   <div class="goals-for">0</div><div class="goals-against">0</div><div class="goal-diff">0</div></div>
-  <div class="table-row qualify"><div class="pos">5</div><div class="team"><img src="/images/logo.png" alt="Equipo 5" @error="handleTeamImageError"><span>Equipo 5</span></div>
-   <div class="points">0</div>
-   <div class="games">0</div><div class="wins">0</div><div class="draws">0</div><div class="losses">0</div>
-   <div class="goals-for">0</div><div class="goals-against">0</div><div class="goal-diff">0</div></div>
-  <div class="table-row qualify"><div class="pos">6</div><div class="team"><img src="/images/logo.png" alt="Equipo 6" @error="handleTeamImageError"><span>Equipo 6</span></div>
-   <div class="points">0</div>
-   <div class="games">0</div><div class="wins">0</div><div class="draws">0</div><div class="losses">0</div>
-   <div class="goals-for">0</div><div class="goals-against">0</div><div class="goal-diff">0</div></div>
-  <div class="table-row qualify"><div class="pos">7</div><div class="team"><img src="/images/logo.png" alt="Equipo 7" @error="handleTeamImageError"><span>Equipo 7</span></div>
-   <div class="points">0</div>
-   <div class="games">0</div><div class="wins">0</div><div class="draws">0</div><div class="losses">0</div>
-   <div class="goals-for">0</div><div class="goals-against">0</div><div class="goal-diff">0</div></div>
-  <div class="table-row qualify"><div class="pos">8</div><div class="team"><img src="/images/logo.png" alt="Equipo 8" @error="handleTeamImageError"><span>Equipo 8</span></div>
-   <div class="points">0</div>
-   <div class="games">0</div><div class="wins">0</div><div class="draws">0</div><div class="losses">0</div>
-   <div class="goals-for">0</div><div class="goals-against">0</div><div class="goal-diff">0</div></div>
-  <div class="table-row elimination"><div class="pos">9</div><div class="team"><img src="/images/logo.png" alt="Equipo 9" @error="handleTeamImageError"><span>Equipo 9</span></div>
-   <div class="points">0</div>
-   <div class="games">0</div><div class="wins">0</div><div class="draws">0</div><div class="losses">0</div>
-   <div class="goals-for">0</div><div class="goals-against">0</div><div class="goal-diff">0</div></div>
-         </div>
-       </div>
+    <div class="classification-container">
+      <!-- Info del torneo -->
+      <div class="tournament-info">
+        <div class="tournament-name">{{ tournament?.name || 'Torneo' }}</div>
+        <div class="tournament-phase">Fase de Grupos</div>
       </div>
 
-      <div class="group-card">
-       <div class="group-header">Grupo B</div>
-       <div class="classification-table">
-         <div class="table-header">
-          <div class="pos">#</div>
-          <div class="team">Equipo</div>
-          <div class="points">PTS</div>
-          <div class="games">PJ</div>
-          <div class="wins">PG</div>
-          <div class="draws">PE</div>
-          <div class="losses">PP</div>
-          <div class="goals-for">GF</div>
-          <div class="goals-against">GC</div>
-          <div class="goal-diff">DG</div>
-         </div>
-         <div class="table-body">
-          <!-- Reutilizamos plantillas de filas: 9 equipos -->
-  <div class="table-row qualify"><div class="pos">1</div><div class="team"><img src="/images/logo.png" alt="Equipo 10" @error="handleTeamImageError"><span>Equipo 10</span></div><div class="points">0</div><div class="games">0</div><div class="wins">0</div><div class="draws">0</div><div class="losses">0</div><div class="goals-for">0</div><div class="goals-against">0</div><div class="goal-diff">0</div></div>
-  <div class="table-row qualify"><div class="pos">2</div><div class="team"><img src="/images/logo.png" alt="Equipo 11" @error="handleTeamImageError"><span>Equipo 11</span></div><div class="points">0</div><div class="games">0</div><div class="wins">0</div><div class="draws">0</div><div class="losses">0</div><div class="goals-for">0</div><div class="goals-against">0</div><div class="goal-diff">0</div></div>
-  <div class="table-row qualify"><div class="pos">3</div><div class="team"><img src="/images/logo.png" alt="Equipo 12" @error="handleTeamImageError"><span>Equipo 12</span></div><div class="points">0</div><div class="games">0</div><div class="wins">0</div><div class="draws">0</div><div class="losses">0</div><div class="goals-for">0</div><div class="goals-against">0</div><div class="goal-diff">0</div></div>
-  <div class="table-row qualify"><div class="pos">4</div><div class="team"><img src="/images/logo.png" alt="Equipo 13" @error="handleTeamImageError"><span>Equipo 13</span></div><div class="points">0</div><div class="games">0</div><div class="wins">0</div><div class="draws">0</div><div class="losses">0</div><div class="goals-for">0</div><div class="goals-against">0</div><div class="goal-diff">0</div></div>
-  <div class="table-row qualify"><div class="pos">5</div><div class="team"><img src="/images/logo.png" alt="Equipo 14" @error="handleTeamImageError"><span>Equipo 14</span></div><div class="points">0</div><div class="games">0</div><div class="wins">0</div><div class="draws">0</div><div class="losses">0</div><div class="goals-for">0</div><div class="goals-against">0</div><div class="goal-diff">0</div></div>
-  <div class="table-row qualify"><div class="pos">6</div><div class="team"><img src="/images/logo.png" alt="Equipo 15" @error="handleTeamImageError"><span>Equipo 15</span></div><div class="points">0</div><div class="games">0</div><div class="wins">0</div><div class="draws">0</div><div class="losses">0</div><div class="goals-for">0</div><div class="goals-against">0</div><div class="goal-diff">0</div></div>
-  <div class="table-row qualify"><div class="pos">7</div><div class="team"><img src="/images/logo.png" alt="Equipo 16" @error="handleTeamImageError"><span>Equipo 16</span></div><div class="points">0</div><div class="games">0</div><div class="wins">0</div><div class="draws">0</div><div class="losses">0</div><div class="goals-for">0</div><div class="goals-against">0</div><div class="goal-diff">0</div></div>
-  <div class="table-row qualify"><div class="pos">8</div><div class="team"><img src="/images/logo.png" alt="Equipo 17" @error="handleTeamImageError"><span>Equipo 17</span></div><div class="points">0</div><div class="games">0</div><div class="wins">0</div><div class="draws">0</div><div class="losses">0</div><div class="goals-for">0</div><div class="goals-against">0</div><div class="goal-diff">0</div></div>
-  <div class="table-row elimination"><div class="pos">9</div><div class="team"><img src="/images/logo.png" alt="Equipo 18" @error="handleTeamImageError"><span>Equipo 18</span></div><div class="points">0</div><div class="games">0</div><div class="wins">0</div><div class="draws">0</div><div class="losses">0</div><div class="goals-for">0</div><div class="goals-against">0</div><div class="goal-diff">0</div></div>
-         </div>
-       </div>
+      <!-- Loading state -->
+      <div v-if="loading" class="loading-container">
+        <div class="spinner"></div>
+        <p>Cargando estadísticas...</p>
       </div>
 
-      <div class="group-card">
-       <div class="group-header">Grupo C</div>
-       <div class="classification-table">
-         <div class="table-header">
-          <div class="pos">#</div>
-          <div class="team">Equipo</div>
-          <div class="points">PTS</div>
-          <div class="games">PJ</div>
-          <div class="wins">PG</div>
-          <div class="draws">PE</div>
-          <div class="losses">PP</div>
-          <div class="goals-for">GF</div>
-          <div class="goals-against">GC</div>
-          <div class="goal-diff">DG</div>
-         </div>
-         <div class="table-body">
-      <div class="table-row qualify"><div class="pos">1</div><div class="team"><img src="/images/logo.png" alt="Equipo 19" @error="handleTeamImageError"><span>Equipo 19</span></div><div class="games">0</div><div class="wins">0</div><div class="draws">0</div><div class="losses">0</div><div class="goals-for">0</div><div class="goals-against">0</div><div class="goal-diff">0</div><div class="points">0</div></div>
-      <div class="table-row qualify"><div class="pos">2</div><div class="team"><img src="/images/logo.png" alt="Equipo 20" @error="handleTeamImageError"><span>Equipo 20</span></div><div class="games">0</div><div class="wins">0</div><div class="draws">0</div><div class="losses">0</div><div class="goals-for">0</div><div class="goals-against">0</div><div class="goal-diff">0</div><div class="points">0</div></div>
-      <div class="table-row qualify"><div class="pos">3</div><div class="team"><img src="/images/logo.png" alt="Equipo 21" @error="handleTeamImageError"><span>Equipo 21</span></div><div class="games">0</div><div class="wins">0</div><div class="draws">0</div><div class="losses">0</div><div class="goals-for">0</div><div class="goals-against">0</div><div class="goal-diff">0</div><div class="points">0</div></div>
-      <div class="table-row qualify"><div class="pos">4</div><div class="team"><img src="/images/logo.png" alt="Equipo 22" @error="handleTeamImageError"><span>Equipo 22</span></div><div class="games">0</div><div class="wins">0</div><div class="draws">0</div><div class="losses">0</div><div class="goals-for">0</div><div class="goals-against">0</div><div class="goal-diff">0</div><div class="points">0</div></div>
-      <div class="table-row qualify"><div class="pos">5</div><div class="team"><img src="/images/logo.png" alt="Equipo 23" @error="handleTeamImageError"><span>Equipo 23</span></div><div class="games">0</div><div class="wins">0</div><div class="draws">0</div><div class="losses">0</div><div class="goals-for">0</div><div class="goals-against">0</div><div class="goal-diff">0</div><div class="points">0</div></div>
-      <div class="table-row qualify"><div class="pos">6</div><div class="team"><img src="/images/logo.png" alt="Equipo 24" @error="handleTeamImageError"><span>Equipo 24</span></div><div class="games">0</div><div class="wins">0</div><div class="draws">0</div><div class="losses">0</div><div class="goals-for">0</div><div class="goals-against">0</div><div class="goal-diff">0</div><div class="points">0</div></div>
-      <div class="table-row qualify"><div class="pos">7</div><div class="team"><img src="/images/logo.png" alt="Equipo 25" @error="handleTeamImageError"><span>Equipo 25</span></div><div class="games">0</div><div class="wins">0</div><div class="draws">0</div><div class="losses">0</div><div class="goals-for">0</div><div class="goals-against">0</div><div class="goal-diff">0</div><div class="points">0</div></div>
-      <div class="table-row qualify"><div class="pos">8</div><div class="team"><img src="/images/logo.png" alt="Equipo 26" @error="handleTeamImageError"><span>Equipo 26</span></div><div class="games">0</div><div class="wins">0</div><div class="draws">0</div><div class="losses">0</div><div class="goals-for">0</div><div class="goals-against">0</div><div class="goal-diff">0</div><div class="points">0</div></div>
-      <div class="table-row elimination"><div class="pos">9</div><div class="team"><img src="/images/logo.png" alt="Equipo 27" @error="handleTeamImageError"><span>Equipo 27</span></div><div class="games">0</div><div class="wins">0</div><div class="draws">0</div><div class="losses">0</div><div class="goals-for">0</div><div class="goals-against">0</div><div class="goal-diff">0</div><div class="points">0</div></div>
-         </div>
-       </div>
+      <!-- Error state -->
+      <div v-else-if="error" class="error-container">
+        <p>{{ error }}</p>
+        <button @click="loadStatistics" class="retry-btn">Reintentar</button>
+      </div>
+
+      <!-- Groups -->
+      <div v-else-if="groupedTeams.length > 0" class="groups-grid">
+        <div v-for="group in groupedTeams" :key="group.groupId" class="group-card">
+          <div class="group-header">Grupo {{ group.groupName }}</div>
+          <div class="classification-table">
+            <div class="table-header">
+              <div class="pos">#</div>
+              <div class="team">Equipo</div>
+              <div class="points">PTS</div>
+              <div class="games">PJ</div>
+              <div class="wins">PG</div>
+              <div class="draws">PE</div>
+              <div class="losses">PP</div>
+              <div class="goals-for">GF</div>
+              <div class="goals-against">GC</div>
+              <div class="goal-diff">DG</div>
+            </div>
+            <div class="table-body">
+              <div v-for="(team, index) in group.teams" :key="team.teamId" class="table-row"
+                :class="getRowClass(index, group.teams.length)">
+                <div class="pos">{{ index + 1 }}</div>
+                <div class="team">
+                  <img :src="`/images/teams/${team.teamId}.png`" :alt="team.teamName" @error="handleTeamImageError">
+                  <span>{{ team.teamName }}</span>
+                </div>
+                <div class="points">{{ team.points }}</div>
+                <div class="games">{{ team.matchesPlayed }}</div>
+                <div class="wins">{{ team.wins }}</div>
+                <div class="draws">{{ team.draws }}</div>
+                <div class="losses">{{ team.losses }}</div>
+                <div class="goals-for">{{ team.goalsFor }}</div>
+                <div class="goals-against">{{ team.goalsAgainst }}</div>
+                <div class="goal-diff">{{ team.goalDifference >= 0 ? '+' : '' }}{{ team.goalDifference }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Empty state -->
+      <div v-else class="empty-state">
+        <p>No hay equipos configurados para este torneo</p>
+      </div>
+
+      <!-- Leyenda -->
+      <div class="classification-bottom">
+        <div class="classification-legend">
+          <div class="legend-item qualify">
+            <span class="legend-color"></span>
+            <span>Clasifican a playoff</span>
+          </div>
+          <div class="legend-item elimination">
+            <span class="legend-color"></span>
+            <span>Zona de eliminación</span>
+          </div>
+        </div>
+
+        <div class="classification-legend-siglas">
+          <h3>Significado de las siglas</h3>
+          <ul class="siglas-list">
+            <li><strong>PJ</strong> — Partidos Jugados</li>
+            <li><strong>PG</strong> — Partidos Ganados</li>
+            <li><strong>PE</strong> — Partidos Empatados</li>
+            <li><strong>PP</strong> — Partidos Perdidos</li>
+            <li><strong>GF</strong> — Goles a Favor</li>
+            <li><strong>GC</strong> — Goles en Contra</li>
+            <li><strong>DG</strong> — Diferencia de Gol</li>
+            <li><strong>PTS</strong> — Puntos</li>
+          </ul>
+        </div>
       </div>
     </div>
-            <!-- Significado de las siglas y leyenda de clasificación -->
-            <div class="classification-bottom">
-             <div class="classification-legend">
-               <div class="legend-item qualify">
-                 <span class="legend-color"></span>
-                 <span>Clasifican a playoff</span>
-               </div>
-               <div class="legend-item elimination">
-                 <span class="legend-color"></span>
-                 <span>Zona de eliminación</span>
-               </div>
-             </div>
-
-             <div class="classification-legend-siglas" aria-label="Significado de siglas">
-               <h3>Significado de las siglas</h3>
-               <ul class="siglas-list">
-                <li><strong>PJ</strong> — Partidos Jugados</li>
-                <li><strong>PG</strong> — Partidos Ganados</li>
-                <li><strong>PE</strong> — Partidos Empatados</li>
-                <li><strong>PP</strong> — Partidos Perdidos</li>
-                <li><strong>GF</strong> — Goles a Favor</li>
-                <li><strong>GC</strong> — Goles en Contra</li>
-                <li><strong>DG</strong> — Diferencia de Gol</li>
-                <li><strong>PTS</strong> — Puntos</li>
-               </ul>
-             </div>
-            </div>
   </div>
- </div>
 </template>
 
 <script setup lang="ts">
-const handleTeamImageError = (event: Event) => {
- const img = event.target as HTMLImageElement
- img.src = '/images/logo.png'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useTournaments } from '@/composables/useTournaments'
+import { useTeams } from '@/composables/useTeams'
+import type { TeamStatistics } from '@/services/api/tournamentService'
+import type { Tournament } from '@/types/TournamentType'
+import type { Team } from '@/types/TeamType'
+
+// Props
+interface Props {
+  tournament?: Tournament | null
 }
+
+const props = defineProps<Props>()
+
+// Composables
+const { getTournamentTeamStatistics } = useTournaments()
+const { teams, loadTeams } = useTeams()
+
+// State
+const teamStatistics = ref<TeamStatistics[]>([])
+const loading = ref(false)
+const error = ref<string | null>(null)
+
+// Interface para equipo con estadísticas
+interface TeamWithStats extends TeamStatistics {
+  teamName: string
+}
+
+// Interface para grupo con equipos
+interface GroupWithTeams {
+  groupId: number
+  groupName: string
+  teams: TeamWithStats[]
+}
+
+// Computed
+const groupedTeams = computed((): GroupWithTeams[] => {
+  if (!props.tournament?.groups || !props.tournament?.teamAssignments) {
+    return []
+  }
+
+  return props.tournament.groups.map(group => {
+    // Obtener los equipos asignados a este grupo
+    const groupTeamIds = props.tournament!.teamAssignments
+      ?.filter(assignment => assignment.groupId === group.id)
+      .map(assignment => assignment.teamId) || []
+
+    // Crear estadísticas para cada equipo del grupo
+    const groupTeams: TeamWithStats[] = groupTeamIds.map(teamId => {
+      // Buscar estadísticas del equipo
+      const stats = teamStatistics.value.find(stat => stat.teamId === teamId)
+
+      // Buscar información del equipo
+      const teamInfo = teams.value.find(team => team.id === teamId)
+
+      // Solo incluir equipos que existen en la lista de equipos
+      if (!teamInfo) {
+        return null
+      }
+
+      if (stats) {
+        // Si tiene estadísticas, usar las reales
+        return {
+          ...stats,
+          teamName: teamInfo.name
+        }
+      } else {
+        // Si no tiene estadísticas, crear estadísticas vacías
+        return {
+          teamId,
+          teamName: teamInfo.name,
+          matchesPlayed: 0,
+          wins: 0,
+          draws: 0,
+          losses: 0,
+          goalsFor: 0,
+          goalsAgainst: 0,
+          goalDifference: 0,
+          points: 0
+        }
+      }
+    }).filter(team => team !== null) as TeamWithStats[]
+
+    // Ordenar equipos por puntos, diferencia de goles, goles a favor
+    groupTeams.sort((a, b) => {
+      if (b.points !== a.points) return b.points - a.points
+      if (b.goalDifference !== a.goalDifference) return b.goalDifference - a.goalDifference
+      return b.goalsFor - a.goalsFor
+    })
+
+    return {
+      groupId: Number(group.id),
+      groupName: group.groupName || group.name,
+      teams: groupTeams
+    }
+  })
+})
+
+// Methods
+const handleTeamImageError = (event: Event) => {
+  const img = event.target as HTMLImageElement
+  img.src = '/images/logo.png'
+}
+
+const getRowClass = (index: number, totalTeams: number): string => {
+  // Los primeros equipos clasifican, el último es eliminación
+  if (index < Math.max(1, totalTeams - 1)) {
+    return 'qualify'
+  }
+  return 'elimination'
+}
+
+const loadStatistics = async () => {
+  if (!props.tournament?.id) return
+
+  loading.value = true
+  error.value = null
+
+  try {
+    const result = await getTournamentTeamStatistics(props.tournament.id)
+    if (result.success && result.statistics) {
+      teamStatistics.value = result.statistics
+    } else {
+      teamStatistics.value = []
+      error.value = result.message
+    }
+  } catch (err) {
+    teamStatistics.value = []
+    error.value = 'Error al cargar las estadísticas'
+    console.error('Error loading statistics:', err)
+  } finally {
+    loading.value = false
+  }
+}
+
+// Lifecycle
+onMounted(async () => {
+  await loadTeams() // Cargar equipos para obtener nombres
+  await loadStatistics()
+})
+
+// Watchers
+watch(() => props.tournament?.id, (newId) => {
+  if (newId) {
+    loadStatistics()
+  }
+})
 </script>
 
 <style scoped>
 .section-content {
- width: 100%;
- display: flex;
- flex-direction: column;
- align-items: center;
- justify-content: center;
- max-width: 1200px;
- margin: 0 auto;
- padding: 2rem;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 2rem 4rem 2rem;
 }
 
 .section-header {
- margin-bottom: 3rem;
- text-align: center;
- width: 100%;
+  margin-bottom: 3rem;
+  text-align: center;
+  width: 100%;
 }
 
 .section-header h2 {
- font-size: 2.5rem;
- font-weight: 700;
- color: #ffffff;
- margin: 0 0 0.5rem 0;
- background: linear-gradient(135deg, #3498db, #2980b9);
- -webkit-background-clip: text;
- -webkit-text-fill-color: transparent;
- background-clip: text;
- text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 0.5rem 0;
+  background: linear-gradient(135deg, #3498db, #2980b9);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .section-description {
- font-size: 1.1rem;
- color: #bdc3c7;
- margin: 0;
+  font-size: 1.1rem;
+  color: #bdc3c7;
+  margin: 0;
 }
 
-/* Estilos para Clasificación */
-/* Contenedor principal: full-bleed para ocupar todo el ancho de la página
-   pero manteniendo el contenido interno centrado y con máximo ancho. */
 .classification-container {
-  background: #2c3e50;
-  /* full-bleed trick */
+  background: var(--bg-secondary);
   width: 100vw;
   margin-left: calc(50% - 50vw);
   margin-right: calc(50% - 50vw);
   box-sizing: border-box;
-  padding: 2rem 0; /* control del padding vertical, el interno gestiona horizontales */
-  border-top: 2px solid #34495e;
-  border-bottom: 2px solid #34495e;
-  overflow-x: hidden; /* evitar scroll horizontal global */
+  padding: 2rem 0;
+  border-top: 1px solid var(--border-primary);
+  border-bottom: 1px solid var(--border-primary);
+  overflow-x: hidden;
 }
 
-/* Contenedor de grupos */
+.tournament-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 0.15rem;
+  padding: 0 1rem 1rem;
+  width: calc(100% - 4rem);
+  max-width: 1200px;
+  margin: 0 auto 1rem auto;
+  color: var(--text-primary);
+}
+
+.tournament-info .tournament-name {
+  font-size: 1.25rem;
+  font-weight: 800;
+}
+
+.tournament-info .tournament-phase {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+}
+
+.loading-container,
+.error-container,
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 2rem;
+  color: var(--text-primary);
+  text-align: center;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid var(--border-primary);
+  border-top: 4px solid var(--primary-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.retry-btn {
+  background: var(--primary-color);
+  color: var(--white);
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  margin-top: 1rem;
+  transition: background 0.3s ease;
+}
+
+.retry-btn:hover {
+  background: var(--primary-color-dark);
+}
+
 .groups-grid {
- display: grid;
- grid-template-columns: repeat(2, 1fr);
- gap: 2rem;
- padding: 0 2rem; /* mantener separación lateral */
- width: 100%;
- max-width: none; /* ocupar todo el ancho del contenedor full-bleed */
- margin: 0;
- overflow-x: hidden; /* evitar scroll horizontal en la cuadrícula */
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 2rem;
+  padding: 0 2rem 3rem 2rem;
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
 }
 
 .group-card {
- background: #1e3a5f;
- border-radius: 12px;
- overflow: hidden;
- box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
- border: 1px solid #2c5282;
- width: 100%;
- min-width: 0; /* evita overflow en grids flexibles */
- display: flex;
- flex-direction: column;
- padding: 0.75rem 1rem; /* espacio interno para que no se vean montados */
+  background: var(--card-bg);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px var(--shadow-medium);
+  border: 1px solid var(--border-primary);
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .group-header {
- background: #2563eb;
- color: white;
- font-weight: 700;
- font-size: 1.1rem;
- padding: 1rem 1.25rem;
- text-align: center;
- text-transform: uppercase;
- letter-spacing: 0.5px;
- border-top-left-radius: 18px;
- border-top-right-radius: 18px;
-}
-
-/* Info del torneo centrada */
-.tournament-info {
- display: flex;
- flex-direction: column;
- align-items: center;
- justify-content: center;
- text-align: center;
- gap: 0.15rem;
- padding: 0 1rem 1rem;
- width: calc(100% - 4rem);
- max-width: 1200px;
- margin: 0 auto 1rem auto;
- color: #ffffff;
-}
-.tournament-info .tournament-name {
- font-size: 1.25rem;
- font-weight: 800;
-}
-.tournament-info .tournament-phase {
- font-size: 0.95rem;
- color: #cbd5e1;
-}
-
-.classification-legend {
- display: flex;
- gap: 2rem;
- padding: 2rem 2rem 1rem;
- flex-wrap: wrap;
- background: #2c3e50;
-}
-
-.legend-item {
- display: flex;
- align-items: center;
- gap: 0.5rem;
- font-size: 0.9rem;
- font-weight: 500;
- color: #ecf0f1;
-}
-
-.legend-color {
- width: 16px;
- height: 16px;
- border-radius: 3px;
-}
-
-.legend-item.qualify .legend-color {
- background: linear-gradient(135deg, #27ae60, #2ecc71);
-}
-
-.legend-item.elimination .legend-color {
- background: linear-gradient(135deg, #e74c3c, #c0392b);
+  background: var(--primary-gradient);
+  color: var(--white);
+  font-weight: 700;
+  font-size: 1.1rem;
+  padding: 1rem 1.25rem;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .classification-table {
- overflow-x: hidden; /* quitar scroll horizontal interno */
- background: #1e3a5f;
+  background: var(--card-bg);
+  overflow: visible;
+}
+
+.table-body {
+  background: var(--card-bg);
+}
+
+.classification-table::-webkit-scrollbar {
+  display: none;
 }
 
 .table-header,
 .table-row {
- display: grid;
- grid-template-columns: 40px 2fr 50px 50px 50px 50px 60px 60px 70px 60px;
- gap: 0.5rem;
- align-items: center;
- padding: 0.75rem 1rem;
- font-size: 0.85rem;
- min-width: 0; /* permitir que las celdas se encojan sin overflow */
+  display: grid;
+  grid-template-columns: 40px 1fr 45px 40px 40px 40px 45px 45px 50px 45px;
+  gap: 0.25rem;
+  align-items: center;
+  padding: 0.6rem 0.8rem;
+  font-size: 0.8rem;
+  min-width: 0;
+  width: 100%;
 }
 
 .table-header {
- background: #2563eb;
- font-weight: 700;
- color: #ffffff;
- text-transform: uppercase;
- letter-spacing: 0.5px;
- border-bottom: 2px solid #1d4ed8;
-}
-
-.table-header .points {
- padding: 0 0.4rem; /* mayor espacio para la columna PTS */
+  background: var(--primary-color);
+  font-weight: 700;
+  color: var(--white);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid var(--primary-color-dark);
+  font-size: 0.75rem;
 }
 
 .table-row {
- border-bottom: 1px solid #334155;
- transition: all 0.3s ease;
- background: #1e3a5f;
- color: #f8fafc;
+  border-bottom: 1px solid var(--border-primary);
+  transition: all 0.2s ease;
+  background: var(--card-bg);
+  color: #ffffff;
 }
 
 .table-row:nth-child(even) {
- background: #1e293b;
+  background: var(--bg-secondary);
 }
 
 .table-row:hover {
- background: #2563eb !important;
- transform: scale(1.02);
+  background: var(--card-hover-bg);
+  transform: translateX(2px);
 }
 
 .table-row.qualify {
- border-left: 4px solid #10b981;
+  border-left: 4px solid #22c55e;
+  background: linear-gradient(90deg, rgba(34, 197, 94, 0.05), var(--card-bg));
+}
+
+.table-row.qualify::after {
+  content: '';
 }
 
 .table-row.elimination {
- border-left: 4px solid #ef4444;
+  border-left: 4px solid #ef4444;
+  background: linear-gradient(90deg, rgba(239, 68, 68, 0.05), var(--card-bg));
+}
+
+.table-row.elimination::after {
+  content: '';
 }
 
 .pos {
- font-weight: 700;
- color: #ffffff;
- text-align: center;
- background: rgba(37, 99, 235, 0.3);
- border-radius: 6px;
- padding: 0.25rem;
+  font-weight: 700;
+  color: #ffffff;
+  text-align: center;
+  background: var(--primary-color-alpha-30);
+  border-radius: 6px;
+  padding: 0.3rem 0.1rem;
+  font-size: 0.8rem;
+  border: 1px solid var(--border-primary);
 }
 
 .team {
- display: flex;
- align-items: center;
- gap: 0.75rem;
- font-weight: 600;
- color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  color: #ffffff;
+  padding: 0.2rem 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .team img {
- width: 25px;
- height: 25px;
- border-radius: 4px;
- object-fit: cover;
- border: 2px solid #2563eb;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  object-fit: cover;
+  border: 1px solid var(--border-primary);
+  flex-shrink: 0;
+}
+
+.team span {
+  font-size: 0.8rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .games,
@@ -403,191 +519,239 @@ const handleTeamImageError = (event: Event) => {
 .goals-against,
 .goal-diff,
 .points {
- text-align: center;
- font-weight: 600;
- color: #f8fafc;
+  text-align: center;
+  font-weight: 600;
+  color: #ffffff;
+  padding: 0.2rem 0.1rem;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 24px;
+}
+
+.wins {
+  color: #ffffff;
+}
+
+.draws {
+  color: #ffffff;
+}
+
+.losses {
+  color: #ffffff;
+}
+
+.goals-for {
+  color: #ffffff;
+}
+
+.goals-against {
+  color: #ffffff;
+}
+
+.goal-diff {
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.goal-diff::before {
+  display: none;
 }
 
 .points {
- color: #fbbf24;
- font-size: 1rem;
- font-weight: 800;
+  color: #ffffff;
+  font-size: 0.9rem;
+  font-weight: 900;
 }
 
-/* Dark mode support */
-[data-theme="dark"] .section-content {
- background: transparent;
- color: #e2e8f0;
+.classification-legend {
+  display: flex;
+  gap: 2rem;
+  padding: 2rem 2rem 1rem;
+  flex-wrap: wrap;
+  background: var(--bg-secondary);
+  justify-content: center;
+  margin-top: 2rem;
+  border-top: 2px solid var(--border-primary);
 }
 
-[data-theme="dark"] .section-header h2 {
- color: #ffffff;
- text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.3);
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-primary);
 }
 
-[data-theme="dark"] .section-description {
- color: #cbd5e1;
+.legend-color {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
 }
 
-[data-theme="dark"] .classification-container {
- background: transparent;
+.legend-item.qualify .legend-color {
+  background: #22c55e;
 }
 
-[data-theme="dark"] .classification-legend {
- background: linear-gradient(145deg, #1e293b 0%, #334155 100%);
- border-color: #475569;
- color: #e2e8f0;
+.legend-item.elimination .legend-color {
+  background: #ef4444;
 }
 
-[data-theme="dark"] .classification-legend .legend-item {
- color: #e2e8f0 !important;
+.classification-legend-siglas {
+  padding: 1.25rem 2rem 2rem;
+  background: transparent;
+  color: var(--text-primary);
+  width: 100%;
+  box-sizing: border-box;
+  border-top: 1px solid var(--border-primary);
 }
 
-[data-theme="dark"] .classification-table {
- background: linear-gradient(145deg, #1e293b 0%, #334155 100%);
- border-color: #475569;
- color: #e2e8f0;
+.classification-legend-siglas h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.05rem;
+  color: var(--text-primary);
+  font-weight: 700;
+  text-align: center;
 }
 
-[data-theme="dark"] .table-header {
- background: #0f172a;
- border-bottom: 2px solid #475569;
- color: #ffffff !important;
+.siglas-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem 1.5rem;
+  max-width: 600px;
+  margin: 0 auto;
 }
 
-[data-theme="dark"] .table-row {
- border-bottom: 1px solid #475569;
+.siglas-list li {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
 }
 
-[data-theme="dark"] .table-row:hover {
- background: #334155;
-}
-
-[data-theme="dark"] .table-row:nth-child(even) {
- background: rgba(15, 23, 42, 0.3);
-}
-
-[data-theme="dark"] .table-row:nth-child(even):hover {
- background: #334155;
-}
-
-[data-theme="dark"] .pos {
- color: #3b82f6 !important;
- font-weight: bold;
-}
-
-[data-theme="dark"] .team span {
- color: #ffffff !important;
-}
-
-[data-theme="dark"] .games,
-[data-theme="dark"] .wins,
-[data-theme="dark"] .draws,
-[data-theme="dark"] .losses,
-[data-theme="dark"] .goals-for,
-[data-theme="dark"] .goals-against,
-[data-theme="dark"] .goal-diff {
- color: #cbd5e1 !important;
-}
-
-[data-theme="dark"] .points {
- color: #3b82f6 !important;
+.siglas-list li strong {
+  color: var(--primary-color);
+  margin-right: 0.4rem;
 }
 
 /* Responsive */
+@media (max-width: 1024px) {
+  .groups-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    padding: 1rem;
+    max-width: 100%;
+  }
+}
+
 @media (max-width: 768px) {
- .groups-grid {
-  grid-template-columns: 1fr;
-  gap: 1.5rem;
-  padding: 1rem;
- }
+  .groups-grid {
+    padding: 0.5rem;
+  }
 
- .table-header,
- .table-row {
-  grid-template-columns: 35px 1.5fr 45px 45px 45px 45px 50px 50px 55px 50px;
-  padding: 0.6rem 0.8rem;
-  font-size: 0.75rem;
- }
+  .table-header,
+  .table-row {
+    grid-template-columns: 35px 1fr 40px 35px 35px 35px 40px 40px 45px 40px;
+    padding: 0.5rem 0.6rem;
+    font-size: 0.75rem;
+    gap: 0.2rem;
+  }
 
- .classification-table {
-  border: 2px solid #2563eb;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
- }
+  .team img {
+    width: 20px;
+    height: 20px;
+  }
 
- .table-header {
-  background: #1d4ed8;
- }
+  .team span {
+    font-size: 0.75rem;
+  }
 
- .pos {
-  padding: 0.15rem;
-  font-size: 0.75rem;
- }
+  .pos {
+    padding: 0.25rem 0.1rem;
+    font-size: 0.75rem;
+  }
 
- .team img {
-  width: 20px;
-  height: 20px;
- }
+  .games,
+  .wins,
+  .draws,
+  .losses,
+  .goals-for,
+  .goals-against,
+  .goal-diff,
+  .points {
+    font-size: 0.75rem;
+    padding: 0.2rem 0.05rem;
+    min-height: 20px;
+  }
+
+  .points {
+    font-size: 0.8rem;
+  }
+
+  .siglas-list {
+    grid-template-columns: 1fr;
+  }
+
+  .classification-legend-siglas {
+    padding: 0.75rem 1rem 1rem;
+  }
 }
 
 @media (max-width: 480px) {
+  .classification-container {
+    padding: 1rem 0;
+  }
 
- .table-header,
- .table-row {
-  padding: 0.5rem;
-  font-size: 0.75rem;
- }
+  .table-header,
+  .table-row {
+    grid-template-columns: 30px 1fr 35px 30px 30px 30px 35px 35px 40px 35px;
+    padding: 0.4rem 0.5rem;
+    font-size: 0.7rem;
+    gap: 0.15rem;
+  }
 
- .classification-legend {
-  padding: 1rem;
-  gap: 1rem;
- }
+  .team img {
+    width: 18px;
+    height: 18px;
+  }
 
- .team span {
-  font-size: 0.8rem !important;
-  font-weight: 600;
- }
-}
+  .team span {
+    font-size: 0.7rem;
+  }
 
-/* Leyenda de siglas */
-.classification-legend-siglas {
- padding: 1.25rem 2rem 2rem;
- background: transparent;
- color: #ecf0f1;
- width: 100%;
- box-sizing: border-box;
- border-top: 1px solid rgba(255,255,255,0.04);
-}
-.classification-legend-siglas h3 {
- margin: 0 0 0.5rem 0;
- font-size: 1.05rem;
- color: #ffffff;
- font-weight: 700;
-}
-.siglas-list {
- list-style: none;
- padding: 0;
- margin: 0;
- display: grid;
- grid-template-columns: repeat(2, minmax(0, 1fr));
- gap: 0.5rem 1.5rem;
-}
-.siglas-list li {
- color: #cbd5e1;
- font-size: 0.95rem;
-}
-.siglas-list li strong {
- color: #f1c40f; /* resaltar sigla en amarillo */
- margin-right: 0.4rem;
-}
+  .pos {
+    padding: 0.2rem 0.05rem;
+    font-size: 0.7rem;
+  }
 
-@media (max-width: 480px) {
- .siglas-list {
-  grid-template-columns: 1fr;
- }
- .classification-legend-siglas {
-  padding: 0.75rem 1rem 1rem;
- }
+  .games,
+  .wins,
+  .draws,
+  .losses,
+  .goals-for,
+  .goals-against,
+  .goal-diff,
+  .points {
+    font-size: 0.7rem;
+    padding: 0.15rem 0.03rem;
+    min-height: 18px;
+  }
+
+  .points {
+    font-size: 0.75rem;
+  }
+
+  .classification-legend {
+    padding: 1rem;
+    gap: 1rem;
+  }
+
+  .group-header {
+    font-size: 1rem;
+    padding: 0.8rem 1rem;
+  }
 }
 </style>

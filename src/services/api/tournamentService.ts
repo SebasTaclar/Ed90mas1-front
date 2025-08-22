@@ -5,6 +5,20 @@ import type {
   CreateTournamentResponse,
 } from '@/types/TournamentType'
 
+// Tipo para estadísticas de equipos
+export interface TeamStatistics {
+  teamId: number
+  teamName: string
+  matchesPlayed: number
+  wins: number
+  draws: number
+  losses: number
+  goalsFor: number
+  goalsAgainst: number
+  goalDifference: number
+  points: number
+}
+
 class TournamentService {
   private api = new ApiClient()
 
@@ -128,6 +142,21 @@ class TournamentService {
       }
     } catch (error) {
       console.error('Error al eliminar banner del torneo:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Obtener estadísticas de equipos de un torneo
+   */
+  async getTournamentTeamStatistics(tournamentId: number): Promise<TeamStatistics[]> {
+    try {
+      const response = await this.api.get<TeamStatistics[]>(
+        `/tournaments/${tournamentId}/statistics/teams`,
+      )
+      return response.data
+    } catch (error) {
+      console.error('Error al obtener estadísticas de equipos:', error)
       throw error
     }
   }
