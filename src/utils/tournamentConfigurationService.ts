@@ -1,4 +1,4 @@
-import { API_CONFIG } from '@/services/api/apiConfig'
+import { ApiClient } from '@/services/api/apiConfig'
 import type {
   TournamentConfiguration,
   CreateTournamentConfigurationRequest,
@@ -6,7 +6,7 @@ import type {
 } from '@/types/TournamentType'
 
 class TournamentConfigurationService {
-  private baseUrl = `${API_CONFIG.baseURL}/tournaments`
+  private api = new ApiClient()
 
   /**
    * Crear configuración de torneo
@@ -16,20 +16,11 @@ class TournamentConfigurationService {
     data: CreateTournamentConfigurationRequest,
   ): Promise<TournamentConfiguration> {
     try {
-      const response = await fetch(`${this.baseUrl}/${tournamentId}/configuration`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.message || `Error ${response.status}: ${response.statusText}`)
-      }
-
-      return await response.json()
+      const response = await this.api.post<TournamentConfiguration>(
+        `/tournaments/${tournamentId}/configuration`,
+        data,
+      )
+      return response.data
     } catch (error) {
       console.error('Error creating tournament configuration:', error)
       throw error
@@ -41,17 +32,10 @@ class TournamentConfigurationService {
    */
   async getConfiguration(tournamentId: number): Promise<TournamentConfiguration> {
     try {
-      const response = await fetch(`${this.baseUrl}/${tournamentId}/configuration`)
-
-      if (!response.ok) {
-        if (response.status === 404) {
-          throw new Error('Configuración de torneo no encontrada')
-        }
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.message || `Error ${response.status}: ${response.statusText}`)
-      }
-
-      return await response.json()
+      const response = await this.api.get<TournamentConfiguration>(
+        `/tournaments/${tournamentId}/configuration`,
+      )
+      return response.data
     } catch (error) {
       console.error('Error fetching tournament configuration:', error)
       throw error
@@ -66,20 +50,11 @@ class TournamentConfigurationService {
     data: UpdateTournamentConfigurationRequest,
   ): Promise<TournamentConfiguration> {
     try {
-      const response = await fetch(`${this.baseUrl}/${tournamentId}/configuration`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.message || `Error ${response.status}: ${response.statusText}`)
-      }
-
-      return await response.json()
+      const response = await this.api.put<TournamentConfiguration>(
+        `/tournaments/${tournamentId}/configuration`,
+        data,
+      )
+      return response.data
     } catch (error) {
       console.error('Error updating tournament configuration:', error)
       throw error
@@ -91,14 +66,7 @@ class TournamentConfigurationService {
    */
   async deleteConfiguration(tournamentId: number): Promise<void> {
     try {
-      const response = await fetch(`${this.baseUrl}/${tournamentId}/configuration`, {
-        method: 'DELETE',
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.message || `Error ${response.status}: ${response.statusText}`)
-      }
+      await this.api.delete(`/tournaments/${tournamentId}/configuration`)
     } catch (error) {
       console.error('Error deleting tournament configuration:', error)
       throw error
@@ -112,7 +80,7 @@ class TournamentConfigurationService {
     try {
       await this.getConfiguration(tournamentId)
       return true
-    } catch (error) {
+    } catch {
       return false
     }
   }
