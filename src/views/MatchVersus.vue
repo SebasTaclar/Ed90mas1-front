@@ -273,7 +273,10 @@ const canEditCurrentTeam = computed(() => !currentTeamConfirmed.value || editing
 
 // Funciones de utilidad
 const getPlayerName = (player: Player): string => {
-  return `${player.firstName} ${player.lastName}`
+  // Tomar solo el primer nombre y primer apellido
+  const firstName = player.firstName.split(' ')[0] || ''
+  const lastName = player.lastName.split(' ')[0] || ''
+  return `${firstName} ${lastName}`.trim()
 }
 
 const getPlayerInitials = (player: Player): string => {
@@ -1482,78 +1485,140 @@ watch(currentTeam, async () => {
   .match-header {
     flex-direction: column;
     align-items: flex-start;
-    gap: 1rem;
-    padding: 3rem 1rem 1rem 1rem;
-    margin-bottom: 1.5rem;
+    gap: 0.5rem; /* Reducido de 1rem */
+    padding: 1rem 1rem 0.5rem 1rem; /* Reducido considerablemente el padding superior */
+    margin-bottom: 1rem; /* Reducido de 1.5rem */
   }
 
   .match-info h1 {
-    font-size: 1.5rem;
+    font-size: 1.3rem; /* Reducido de 1.5rem */
+    margin: 0;
+    line-height: 1.2;
   }
 
+  .match-details {
+    margin-top: 0.25rem;
+    font-size: 0.85rem;
+  }
+
+  /* Navegación de equipos más compacta */
   .team-navigation {
-    flex-direction: column;
-    gap: 2rem;
+    flex-direction: row; /* Cambio a horizontal para ahorrar espacio */
+    align-items: center;
+    gap: 0.75rem; /* Mucho menos gap */
     padding: 0 1rem;
-    margin-bottom: 2rem;
+    margin-bottom: 1rem; /* Reducido de 2rem */
+    justify-content: space-between;
   }
 
   .team-nav-btn {
-    width: 100%;
+    flex: 1; /* Ocupar espacio disponible */
+    max-width: 45%; /* Limitar ancho máximo */
     justify-content: center;
     min-width: unset;
-    padding: 1.5rem;
-    flex-direction: row;
-    gap: 1rem;
+    padding: 0.75rem 0.5rem; /* Mucho más compacto */
+    flex-direction: column; /* Cambio a columna para ahorrar altura */
+    gap: 0.4rem;
+    font-size: 0.85rem; /* Texto más pequeño */
   }
 
   .team-logo-small {
-    width: 40px;
-    height: 40px;
+    width: 32px; /* Reducido de 40px */
+    height: 32px;
   }
 
   .vs-indicator {
-    width: 60px;
-    height: 60px;
-    font-size: 1.5rem;
+    width: 40px; /* Reducido de 60px */
+    height: 40px;
+    font-size: 1.2rem; /* Reducido de 1.5rem */
+    flex-shrink: 0;
   }
 
   .team-lineup-container {
-    padding: 0 1rem 1rem;
+    padding: 0 1rem 0.5rem; /* Reducido el padding inferior */
   }
 
   .team-card {
-    padding: 1.5rem;
-    border-radius: 1.5rem;
+    padding: 0.75rem; /* Reducido de 1rem */
+    border-radius: 1rem;
+    margin-bottom: 0.5rem;
   }
 
   .team-header {
-    padding: 1.5rem;
-    gap: 1.5rem;
-    margin-bottom: 2rem;
-  }
-
-  .team-logo-header {
-    width: 60px;
-    height: 60px;
+    display: none; /* Ocultar completamente en móvil */
   }
 
   .team-info h2 {
-    font-size: 1.5rem;
+    font-size: 1.3rem;
   }
 
-  .player-photo-container {
-    width: 55px;
-    height: 55px;
-  }
-
-  .player-name {
+  .probable-xi {
     font-size: 0.8rem;
   }
 
+  /* Campo más eficiente en espacio */
   .field-view {
-    aspect-ratio: 4/3;
-    min-height: 420px;
+    aspect-ratio: 2/3;
+    min-height: 480px; /* Reducido de 600px */
+    max-width: 100%;
+    margin: 0 auto;
+  }
+
+  .players-formation {
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    padding: 2% 6%; /* Reducido el padding */
+  }
+
+  .player-item {
+    /* Jugadores más pequeños en móvil */
+    gap: 0.15rem;
+  }
+
+  .player-photo-container {
+    width: 50px;
+    height: 50px;
+    border-width: 2px;
+  }
+
+  .player-name {
+    font-size: 0.55rem; /* Aún más pequeño para móvil */
+    padding: 0.1rem 0.35rem; /* Padding más pequeño */
+    max-width: 60px; /* Ancho máximo más pequeño */
+    line-height: 1.0; /* Line height más compacto */
+    background: rgba(0, 0, 0, 0.9);
+    border-radius: 5px; /* Border radius más pequeño */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 500; /* Un poco más de peso para legibilidad */
+  }
+
+  .player-number {
+    width: 20px;
+    height: 20px;
+    font-size: 0.65rem;
+    font-weight: 700;
+  }
+
+  .player-initials {
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+
+  /* Ajustes para jugadores seleccionados en móvil */
+  .player-item.player-selected::before {
+    width: 80px;
+    height: 80px;
+  }
+
+  .player-item:hover {
+    transform: translate(-50%, -50%) scale(1.05);
+  }
+
+  .player-item.player-selected {
+    transform: translate(-50%, -50%) scale(1.1) !important;
   }
 
   .btn-confirm-lineup {
@@ -1579,6 +1644,55 @@ watch(currentTeam, async () => {
   .lineup-status {
     padding: 0.75rem 1rem;
     font-size: 0.9rem;
+  }
+
+  /* Optimización de la lista de jugadores convocados en móvil */
+  .selection-summary {
+    padding: 0.75rem; /* Reducido más */
+    margin: 0.75rem 0; /* Menos margen vertical */
+    border-radius: 0.75rem;
+  }
+
+  .selection-summary h3 {
+    font-size: 0.9rem; /* Más pequeño */
+    margin-bottom: 0.5rem; /* Reducido */
+    text-align: center;
+  }
+
+  .selected-players-list {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.4rem; /* Gap más pequeño */
+    max-height: 100px; /* Altura más pequeña */
+    overflow-y: auto;
+  }
+
+  .selected-player-chip {
+    padding: 0.3rem 0.6rem; /* Más compacto */
+    font-size: 0.75rem; /* Texto más pequeño */
+    border-radius: 1.2rem;
+    justify-content: space-between;
+    min-width: 0;
+  }
+
+  .selected-player-chip span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+    margin-right: 0.25rem;
+  }
+
+  .remove-player-btn {
+    width: 16px; /* Más pequeño */
+    height: 16px;
+    font-size: 0.7rem;
+    flex-shrink: 0;
+  }
+
+  /* Botones de acción más compactos */
+  .match-actions {
+    margin-top: 1rem; /* Reducido de 1.5rem */
   }
 }
 

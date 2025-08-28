@@ -117,60 +117,97 @@
           </div>
         </div>
 
-        <!-- Panel de Eventos -->
-        <div class="events-panel">
-          <div class="event-controls">
-            <h3>Agregar Evento</h3>
+        <!-- Panel de Eventos - Modal en móvil -->
+        <div class="events-panel" :class="{ 'mobile-modal': selectedPlayer }">
+          <!-- Overlay para cerrar modal en móvil -->
+          <div v-if="selectedPlayer" class="modal-overlay" @click="closeEventsPanel"></div>
 
-            <div v-if="selectedPlayer" class="selected-player-info">
-              <p>Jugador seleccionado:</p>
-              <div class="selected-player-display">
-                <span class="player-name">{{ getPlayerName(selectedPlayer) }}</span>
-                <span class="team-name">({{ selectedTeam === 'home' ? matchData?.homeTeam.teamName :
-                  matchData?.awayTeam.teamName
-                }})</span>
+          <!-- Contenido del panel -->
+          <div class="events-content">
+            <!-- Header con botón cerrar para móvil -->
+            <div class="events-header">
+              <h3>Agregar Evento</h3>
+              <button v-if="selectedPlayer" @click="closeEventsPanel" class="close-modal-btn">×</button>
+            </div>
+
+            <div class="event-controls">
+              <div v-if="selectedPlayer" class="selected-player-info">
+                <p>Jugador seleccionado:</p>
+                <div class="selected-player-display">
+                  <span class="player-name">{{ getPlayerName(selectedPlayer) }}</span>
+                  <span class="team-name">({{ selectedTeam === 'home' ? matchData?.homeTeam.teamName :
+                    matchData?.awayTeam.teamName
+                  }})</span>
+                </div>
+              </div>
+
+              <div class="event-buttons" v-if="selectedPlayer">
+                <button @click="addEvent('goal')" class="event-btn goal-btn">
+                  ⚽ Gol
+                </button>
+                <button @click="addEvent('yellow_card')" class="event-btn yellow-card-btn">
+                  🟨 Tarjeta Amarilla
+                </button>
+                <button @click="addEvent('red_card')" class="event-btn red-card-btn">
+                  🟥 Tarjeta Roja
+                </button>
+                <button @click="addEvent('substitution')" class="event-btn sub-btn">
+                  🔄 Sustitución
+                </button>
+              </div>
+
+              <div v-else class="no-player-selected">
+                <p>Selecciona un jugador para agregar eventos</p>
               </div>
             </div>
 
-            <div class="event-buttons" v-if="selectedPlayer">
-              <button @click="addEvent('goal')" class="event-btn goal-btn">
-                ⚽ Gol
-              </button>
-              <button @click="addEvent('yellow_card')" class="event-btn yellow-card-btn">
-                🟨 Tarjeta Amarilla
-              </button>
-              <button @click="addEvent('red_card')" class="event-btn red-card-btn">
-                🟥 Tarjeta Roja
-              </button>
-              <button @click="addEvent('substitution')" class="event-btn sub-btn">
-                🔄 Sustitución
-              </button>
-            </div>
-
-            <div v-else class="no-player-selected">
-              <p>Selecciona un jugador para agregar eventos</p>
-            </div>
-          </div>
-
-          <!-- Lista de eventos -->
-          <div class="events-timeline">
-            <h4>Eventos del Partido</h4>
-            <div v-if="matchEvents.length === 0" class="no-events">
-              <p>No hay eventos registrados</p>
-            </div>
-            <div v-else class="events-list">
-              <div v-for="event in sortedEvents" :key="event.id" class="event-item" :class="event.type">
-                <div class="event-details">
-                  <div class="event-type">
-                    <span class="event-icon">{{ getEventIcon(event.type) }}</span>
-                    <span class="event-label">{{ getEventLabel(event.type) }}</span>
+            <!-- Lista de eventos - Visible en móvil cuando no hay jugador seleccionado -->
+            <div v-if="!selectedPlayer" class="events-timeline mobile-events">
+              <div class="events-header-controls">
+                <h4>Eventos del Partido</h4>
+              </div>
+              <div v-if="matchEvents.length === 0" class="no-events">
+                <p>No hay eventos registrados</p>
+              </div>
+              <div v-else class="events-list mobile-events-list">
+                <div v-for="event in sortedEvents" :key="event.id" class="event-item" :class="event.type">
+                  <div class="event-details">
+                    <div class="event-type">
+                      <span class="event-icon">{{ getEventIcon(event.type) }}</span>
+                      <span class="event-label">{{ getEventLabel(event.type) }}</span>
+                    </div>
+                    <div class="event-player">
+                      {{ event.playerName }}
+                      <span class="event-team">({{ event.teamName }})</span>
+                    </div>
                   </div>
-                  <div class="event-player">
-                    {{ event.playerName }}
-                    <span class="event-team">({{ event.teamName }})</span>
-                  </div>
+                  <button @click="removeEvent(event.id)" class="remove-event-btn">×</button>
                 </div>
-                <button @click="removeEvent(event.id)" class="remove-event-btn">×</button>
+              </div>
+            </div>
+
+            <!-- Lista de eventos - Solo visible en desktop -->
+            <div class="events-timeline desktop-only">
+              <div class="events-header-controls">
+                <h4>Eventos del Partido</h4>
+              </div>
+              <div v-if="matchEvents.length === 0" class="no-events">
+                <p>No hay eventos registrados</p>
+              </div>
+              <div v-else class="events-list">
+                <div v-for="event in sortedEvents" :key="event.id" class="event-item" :class="event.type">
+                  <div class="event-details">
+                    <div class="event-type">
+                      <span class="event-icon">{{ getEventIcon(event.type) }}</span>
+                      <span class="event-label">{{ getEventLabel(event.type) }}</span>
+                    </div>
+                    <div class="event-player">
+                      {{ event.playerName }}
+                      <span class="event-team">({{ event.teamName }})</span>
+                    </div>
+                  </div>
+                  <button @click="removeEvent(event.id)" class="remove-event-btn">×</button>
+                </div>
               </div>
             </div>
           </div>
@@ -280,6 +317,12 @@ const selectedPlayer = ref<Player | null>(null)
 const selectedTeam = ref<'home' | 'away' | null>(null)
 const showRestartConfirmation = ref(false)
 
+// Functions
+const closeEventsPanel = () => {
+  selectedPlayer.value = null
+  selectedTeam.value = null
+}
+
 // Computed properties
 const currentPeriod = computed(() => {
   switch (matchPeriod.value) {
@@ -365,7 +408,7 @@ const updateMatchStatus = async (status: string) => {
 
   try {
     await matchesService.updateMatch(matchData.value.matchId, {
-      status: status as any,
+      status: status as 'not_started' | 'in_progress_1_half' | 'finished_1_half' | 'in_progress_2_half' | 'finished_2_half' | 'penalties' | 'finished',
     })
     return true
   } catch (error) {
@@ -1211,6 +1254,73 @@ onUnmounted(() => {
   gap: 2rem;
 }
 
+/* Modal styles for mobile */
+.events-panel.mobile-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  padding: 0;
+  background: transparent;
+  border: none;
+  backdrop-filter: none;
+}
+
+.modal-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 1001;
+}
+
+.events-content {
+  position: relative;
+  z-index: 1002;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 1rem 1rem 0 0;
+  padding: 1rem;
+  margin-top: 30vh;
+  height: 70vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  transition: all 0.3s ease;
+}
+
+.events-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.close-modal-btn {
+  background: rgba(239, 68, 68, 0.2);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.close-modal-btn:hover {
+  background: rgba(239, 68, 68, 0.4);
+}
+
 .event-controls h3 {
   margin: 0 0 1rem 0;
   text-align: center;
@@ -1301,26 +1411,67 @@ onUnmounted(() => {
 
 .no-player-selected {
   text-align: center;
-  padding: 2rem;
+  padding: 0.5rem 1rem;
   opacity: 0.6;
+  font-size: 0.9rem;
 }
 
 .events-timeline {
   flex: 1;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+.desktop-only {
+  display: block;
+}
+
+.mobile-events {
+  display: none;
+}
+
+.events-header-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  position: sticky;
+  top: 0;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  padding: 0.5rem;
+  border-radius: 0.5rem;
 }
 
 .events-timeline h4 {
-  margin: 0 0 1rem 0;
-  text-align: center;
+  margin: 0;
   font-size: 1.1rem;
   opacity: 0.9;
+}
+
+.toggle-events-btn {
+  background: rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+  border: 1px solid #22c55e;
+  border-radius: 0.5rem;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.toggle-events-btn:hover {
+  background: rgba(34, 197, 94, 0.3);
 }
 
 .events-list {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  padding-bottom: 1rem;
+  max-height: none;
+  overflow-y: auto;
 }
 
 .event-item {
@@ -1454,6 +1605,31 @@ onUnmounted(() => {
 }
 
 /* Responsive */
+@media (min-width: 1201px) {
+  .match-header {
+    display: grid;
+    grid-template-columns: 1fr 400px 1fr;
+    justify-items: center;
+  }
+
+  .match-info {
+    grid-column: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .back-button {
+    grid-column: 1;
+    justify-self: start;
+  }
+
+  .match-controls {
+    grid-column: 3;
+    justify-self: end;
+  }
+}
+
 @media (max-width: 1200px) {
   .teams-container {
     grid-template-columns: 1fr;
@@ -1507,6 +1683,137 @@ onUnmounted(() => {
 
   .sub-btn {
     grid-column: auto;
+  }
+
+  /* Panel de eventos en móvil sin modal */
+  .events-panel {
+    margin-top: 1rem;
+    padding: 1rem;
+    min-height: 200px;
+  }
+
+  .events-content {
+    padding: 0;
+    margin-top: 0;
+    height: auto;
+    position: static;
+    background: transparent;
+    border: none;
+    overflow-y: visible;
+  }
+
+  .events-header {
+    margin-bottom: 1rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .events-header h3 {
+    font-size: 1.1rem;
+    margin: 0;
+    text-align: center;
+  }
+
+  .close-modal-btn {
+    display: none;
+  }
+
+  .selected-player-info {
+    padding: 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .event-buttons {
+    gap: 0.75rem;
+    grid-template-columns: 1fr 1fr;
+    margin-bottom: 1rem;
+  }
+
+  .event-btn {
+    padding: 0.75rem;
+    font-size: 0.9rem;
+  }
+
+  .sub-btn {
+    grid-column: 1 / -1;
+  }
+
+  .desktop-only {
+    display: none;
+  }
+
+  /* Lista de eventos visible en móvil */
+  .mobile-events {
+    display: block;
+    margin-top: 1rem;
+  }
+
+  .mobile-events-list {
+    max-height: 300px;
+    overflow-y: auto;
+  }
+
+  /* Estilos específicos para el modal de eventos cuando se selecciona jugador */
+  .events-panel.mobile-modal .events-content {
+    padding: 1rem;
+    gap: 1rem;
+    margin-top: 50vh;
+    height: 50vh;
+    position: relative;
+    z-index: 1002;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 1rem 1rem 0 0;
+    overflow-y: auto;
+  }
+
+  .events-panel.mobile-modal .close-modal-btn {
+    display: flex;
+    width: 32px;
+    height: 32px;
+    font-size: 20px;
+  }
+
+  .events-panel.mobile-modal .desktop-only {
+    display: none;
+  }
+}
+
+/* Desktop styles - disable modal behavior */
+@media (min-width: 769px) {
+  .events-panel.mobile-modal {
+    position: relative;
+    top: auto;
+    left: auto;
+    right: auto;
+    bottom: auto;
+    z-index: auto;
+    padding: 1.5rem;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+  }
+
+  .modal-overlay {
+    display: none;
+  }
+
+  .events-content {
+    position: static;
+    z-index: auto;
+    background: transparent;
+    backdrop-filter: none;
+    border: none;
+    border-radius: 0;
+    padding: 0;
+    margin-top: 0;
+    height: auto;
+    overflow-y: visible;
+  }
+
+  .close-modal-btn {
+    display: none;
   }
 }
 </style>
