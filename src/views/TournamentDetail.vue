@@ -16,7 +16,7 @@
             :tournament-teams="tournamentTeams" @match-updated="loadTournamentMatchesData" />
 
           <!-- Sección: Resultados -->
-          <TournamentResultsSection v-else-if="activeSection === 'resultados'" />
+          <TournamentResultsSection v-else-if="activeSection === 'resultados'" :tournament="selectedTournament" />
 
           <!-- Sección: Clasificación -->
           <TournamentClassificationSection v-else-if="activeSection === 'clasificacion'"

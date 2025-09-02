@@ -15,11 +15,85 @@
             <div class="info-grid">
               <div class="info-item">
                 <span class="label">Equipos registrados:</span>
-                <span class="value">{{ registeredTeams.length }}</span>
+                <span class="value">{{ localRegisteredTeams.length }}</span>
               </div>
               <div class="info-item">
                 <span class="label">Capacidad máxima:</span>
                 <span class="value">{{ tournamentData?.maxTeams }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Gestión de equipos -->
+        <div class="team-management-section">
+          <h3>⚽ Gestionar Equipos del Torneo</h3>
+
+          <div class="team-management-content">
+            <!-- Buscador de equipos -->
+            <div class="team-search-container">
+              <div class="search-input-group">
+                <input
+                  type="text"
+                  v-model="teamSearchQuery"
+                  placeholder="Buscar equipos disponibles..."
+                  class="team-search-input"
+                  :disabled="loadingAvailableTeams"
+                />
+                <span class="search-icon">🔍</span>
+              </div>
+            </div>
+
+            <!-- Lista de equipos disponibles -->
+            <div class="available-teams-container">
+              <div v-if="loadingAvailableTeams" class="loading-teams">
+                <span class="loading-icon">⏳</span>
+                Cargando equipos disponibles...
+              </div>
+
+              <div v-else-if="filteredAvailableTeams.length === 0" class="no-teams-available">
+                <div class="empty-state">
+                  <span class="empty-icon">📭</span>
+                  <p v-if="teamSearchQuery">No se encontraron equipos que coincidan con "{{ teamSearchQuery }}"</p>
+                  <p v-else>No hay equipos disponibles para agregar a este torneo</p>
+                </div>
+              </div>
+
+              <div v-else class="teams-grid">
+                <div
+                  v-for="team in filteredAvailableTeams"
+                  :key="team.id"
+                  class="team-card"
+                  :class="{ 'adding': addingTeam === team.id }"
+                >
+                  <div class="team-info">
+                    <div class="team-logo">
+                      <img
+                        v-if="team.logoPath"
+                        :src="team.logoPath"
+                        :alt="`Logo de ${team.name}`"
+                        class="team-logo-img"
+                      />
+                      <div v-else class="team-logo-placeholder">
+                        ⚽
+                      </div>
+                    </div>
+                    <div class="team-details">
+                      <h4 class="team-name">{{ team.name }}</h4>
+                      <p class="team-captain">Capitán: {{ team.user.name }}</p>
+                    </div>
+                  </div>
+
+                  <button
+                    @click="addTeamToTournament(team)"
+                    :disabled="addingTeam === team.id || addingTeam !== null"
+                    class="btn-add-team"
+                  >
+                    <span v-if="addingTeam === team.id">⏳</span>
+                    <span v-else>➕</span>
+                    {{ addingTeam === team.id ? 'Agregando...' : 'Agregar' }}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -45,7 +119,7 @@
               <div class="input-group" v-if="localConfiguration.numberOfGroups">
                 <label>Equipos por Grupo</label>
                 <div class="teams-distribution">
-                  {{ registeredTeams.length > 0 ? Math.ceil(registeredTeams.length / localConfiguration.numberOfGroups)
+                  {{ localRegisteredTeams.length > 0 ? Math.ceil(localRegisteredTeams.length / localConfiguration.numberOfGroups)
                     : 0 }} equipos aprox.
                 </div>
               </div>
@@ -156,8 +230,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
 import type { Tournament, TournamentConfiguration, TournamentGroup, TeamAssignment } from '@/types/TournamentType';
+import type { Team } from '@/types/TeamType';
 import { useTournamentConfiguration } from '@/composables/useTournamentConfiguration';
-import { useFixtures } from '@/composables/useFixtures';
+import { useTeams } from '@/composables/useTeams';
 import { matchesService } from '@/services/matchesService';
 import Spinner from '@/components/Spinner.vue';
 import ConfirmationModal from '@/components/ConfirmationModal.vue';
@@ -170,6 +245,8 @@ interface Props {
 interface Emits {
   close: [];
   save: [configuration: TournamentConfiguration];
+  teamAdded: [team: Team];
+  teamAddError: [data: { team: Team; error: string }];
 }
 
 const props = defineProps<Props>();
@@ -182,6 +259,9 @@ const {
   validateConfiguration,
   deleteConfiguration
 } = useTournamentConfiguration();
+
+// Composable para manejar equipos
+const { teams, loadTeams, updateTeam } = useTeams();
 
 // Estado local del componente
 const loading = ref(false);
@@ -211,30 +291,39 @@ const existingMatches = ref<any[]>([]); // Para almacenar los partidos existente
 const showDeleteConfirmationModal = ref(false);
 const isDeletingConfiguration = ref(false);
 
+// Variables para gestión de equipos
+const availableTeams = ref<Team[]>([]);
+const loadingAvailableTeams = ref(false);
+const teamSearchQuery = ref('');
+const addingTeam = ref<number | null>(null);
+
+// Variable local para equipos registrados (se sincroniza con props pero permite actualizaciones inmediatas)
+const localRegisteredTeams = ref<Team[]>([]);
+
 // Computed properties
 const availableGroupNumbers = computed(() => {
   // Si no hay equipos registrados, permitir configuración de 1 a 8 grupos
-  if (props.registeredTeams.length === 0) {
+  if (localRegisteredTeams.value.length === 0) {
     return Array.from({ length: 8 }, (_, i) => i + 1);
   }
 
   // Si hay equipos, limitar el número de grupos al número de equipos (máximo 8)
-  const maxGroups = Math.min(props.registeredTeams.length, 8);
+  const maxGroups = Math.min(localRegisteredTeams.value.length, 8);
   return Array.from({ length: maxGroups }, (_, i) => i + 1);
 });
 
 const warnings = computed(() => {
   const warns: string[] = [];
 
-  if (props.registeredTeams.length === 0) {
+  if (localRegisteredTeams.value.length === 0) {
     warns.push('No hay equipos registrados en este torneo');
   }
 
-  if (localConfiguration.value.numberOfGroups > props.registeredTeams.length) {
+  if (localConfiguration.value.numberOfGroups > localRegisteredTeams.value.length) {
     warns.push('El número de grupos es mayor que el número de equipos');
   }
 
-  if (props.registeredTeams.length < 4) {
+  if (localRegisteredTeams.value.length < 4) {
     warns.push('Se recomienda tener al menos 4 equipos para un torneo');
   }
 
@@ -283,10 +372,25 @@ const saveButtonStatus = computed(() => {
   }
 
   return { canSave: true, message: 'Listo para guardar configuración', type: 'ready' };
-});// Métodos
+});
+
+// Computed para equipos filtrados
+const filteredAvailableTeams = computed(() => {
+  if (!teamSearchQuery.value.trim()) {
+    return availableTeams.value;
+  }
+
+  const searchTerm = teamSearchQuery.value.toLowerCase().trim();
+  return availableTeams.value.filter(team =>
+    team.name.toLowerCase().includes(searchTerm) ||
+    team.user.name.toLowerCase().includes(searchTerm)
+  );
+});
+
+// Métodos
 const updateGroupConfiguration = () => {
   if (localConfiguration.value.numberOfGroups > 0) {
-    localConfiguration.value.teamsPerGroup = Math.ceil(props.registeredTeams.length / localConfiguration.value.numberOfGroups);
+    localConfiguration.value.teamsPerGroup = Math.ceil(localRegisteredTeams.value.length / localConfiguration.value.numberOfGroups);
     initializeGroups();
   }
 };
@@ -308,7 +412,7 @@ const initializeGroups = () => {
 
 const generateRandomGroups = () => {
   // Usar el método del composable para generar asignaciones aleatorias
-  const teamIds = props.registeredTeams.map(team => team.id);
+  const teamIds = localRegisteredTeams.value.map(team => team.id);
   const assignments = generateRandomAssignments(teamIds, localConfiguration.value.numberOfGroups);
 
   // Aplicar las asignaciones a los grupos de vista previa
@@ -317,7 +421,7 @@ const generateRandomGroups = () => {
 
 const generateBalancedGroups = () => {
   // Usar el método del composable para generar asignaciones equilibradas
-  const teamIds = props.registeredTeams.map(team => team.id);
+  const teamIds = localRegisteredTeams.value.map(team => team.id);
   const assignments = generateAutoAssignments(teamIds, localConfiguration.value.numberOfGroups);
 
   // Aplicar las asignaciones a los grupos de vista previa
@@ -340,7 +444,7 @@ const applyAssignmentsToPreview = (assignments: TeamAssignment[]) => {
 };
 
 const getTeamName = (teamId: number) => {
-  const team = props.registeredTeams.find(t => t.id === teamId);
+  const team = localRegisteredTeams.value.find(t => t.id === teamId);
   return team?.name || `Equipo ${teamId}`;
 };
 
@@ -392,6 +496,80 @@ const resetDragStyles = () => {
   draggedElements.forEach(el => {
     (el as HTMLElement).style.opacity = '';
   });
+};
+
+// Funciones para gestión de equipos
+const loadAvailableTeams = async () => {
+  if (!props.tournamentData?.id) return;
+
+  loadingAvailableTeams.value = true;
+
+  try {
+    // Cargar todos los equipos desde el API
+    await loadTeams();
+
+    // Filtrar equipos que NO están registrados en este torneo
+    const registeredTeamIds = localRegisteredTeams.value.map(team => team.id);
+    availableTeams.value = teams.value.filter(team =>
+      team.isActive && !registeredTeamIds.includes(team.id)
+    );  } catch (error) {
+    console.error('Error cargando equipos disponibles:', error);
+    availableTeams.value = [];
+  } finally {
+    loadingAvailableTeams.value = false;
+  }
+};const addTeamToTournament = async (team: Team) => {
+  if (!props.tournamentData?.id || addingTeam.value) return;
+
+  addingTeam.value = team.id;
+
+  try {
+    // Obtener los IDs de torneos actuales del equipo
+    const currentTournamentIds = team.tournaments.map(t => t.id);
+
+    // Agregar el nuevo torneo a la lista (si no está ya)
+    const updatedTournamentIds = currentTournamentIds.includes(props.tournamentData.id)
+      ? currentTournamentIds
+      : [...currentTournamentIds, props.tournamentData.id];
+
+    // Actualizar el equipo con la nueva lista de torneos
+    const result = await updateTeam(team.id, {
+      tournamentIds: updatedTournamentIds
+    });
+
+    if (result.success) {
+      console.log(`Equipo ${team.name} agregado exitosamente al torneo ${props.tournamentData.name}`);
+
+      // Agregar el equipo a la lista local de equipos registrados inmediatamente
+      localRegisteredTeams.value.push(team);
+
+      // Remover el equipo de la lista de disponibles
+      availableTeams.value = availableTeams.value.filter(t => t.id !== team.id);
+
+      // Regenerar la configuración de grupos para incluir el nuevo equipo
+      if (localConfiguration.value.numberOfGroups > 0) {
+        updateGroupConfiguration();
+      }
+
+      // Emitir evento para que el componente padre actualice la lista de equipos registrados
+      emit('teamAdded', team);
+
+      return { success: true, message: 'Equipo agregado exitosamente' };
+    } else {
+      throw new Error(result.message || 'Error al agregar equipo al torneo');
+    }
+
+  } catch (error) {
+    console.error('Error agregando equipo al torneo:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+
+    // Emitir error al componente padre
+    emit('teamAddError', { team, error: errorMessage });
+
+    return { success: false, message: errorMessage };
+  } finally {
+    addingTeam.value = null;
+  }
 };
 
 const saveConfiguration = async () => {
@@ -590,6 +768,7 @@ watch(() => props.tournamentData, async (newTournament, oldTournament) => {
   // Cargar partidos existentes al cambiar el torneo
   if (newTournament?.id) {
     await loadExistingMatches();
+    await loadAvailableTeams();
   }
 
   // Cargar configuración si existe
@@ -616,6 +795,11 @@ watch(() => props.tournamentData, async (newTournament, oldTournament) => {
     updateGroupConfiguration();
   }
 
+}, { immediate: true, deep: true });
+
+// Watcher para sincronizar equipos registrados locales con props
+watch(() => props.registeredTeams, (newTeams) => {
+  localRegisteredTeams.value = [...(newTeams || [])];
 }, { immediate: true, deep: true });
 </script>
 
@@ -1439,6 +1623,254 @@ watch(() => props.tournamentData, async (newTournament, oldTournament) => {
   .team-item {
     padding: 0.75rem;
     font-size: 0.9rem;
+  }
+}
+
+/* =================================================
+   ESTILOS PARA GESTIÓN DE EQUIPOS
+   ================================================= */
+
+.team-management-section {
+  background: var(--app-bg-secondary);
+  border-radius: 16px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  border: 1px solid var(--app-border-color);
+}
+
+.team-management-section h3 {
+  margin: 0 0 1.5rem 0;
+  color: var(--app-text-primary);
+  font-size: 1.25rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.team-management-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.team-search-container {
+  width: 100%;
+}
+
+.search-input-group {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+}
+
+.team-search-input {
+  width: 100%;
+  padding: 0.75rem 2.5rem 0.75rem 1rem;
+  border: 2px solid var(--app-border-color);
+  border-radius: var(--border-radius-md);
+  font-size: 1rem;
+  background: var(--app-input-bg);
+  color: var(--app-text-primary);
+  transition: all var(--transition-normal);
+}
+
+.team-search-input:focus {
+  outline: none;
+  border-color: var(--primary-blue);
+  box-shadow: 0 0 0 3px rgba(0, 94, 180, 0.1);
+}
+
+.team-search-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.search-icon {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--app-text-secondary);
+  font-size: 1.1rem;
+}
+
+.available-teams-container {
+  width: 100%;
+}
+
+.loading-teams {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 2rem;
+  background: var(--app-bg-primary);
+  border-radius: var(--border-radius-md);
+  border: 1px solid var(--app-border-color);
+  color: var(--app-text-secondary);
+}
+
+.loading-icon {
+  font-size: 1.2rem;
+  animation: pulse 2s infinite;
+}
+
+.no-teams-available {
+  padding: 2rem;
+  text-align: center;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  color: var(--app-text-secondary);
+}
+
+.empty-icon {
+  font-size: 3rem;
+  opacity: 0.5;
+}
+
+.teams-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+}
+
+.team-card {
+  background: var(--app-bg-primary);
+  border: 2px solid var(--app-border-color);
+  border-radius: var(--border-radius-md);
+  padding: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: all var(--transition-normal);
+  position: relative;
+  overflow: hidden;
+}
+
+.team-card:hover {
+  border-color: var(--primary-blue);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 94, 180, 0.15);
+}
+
+.team-card.adding {
+  border-color: var(--primary-blue);
+  background: rgba(0, 94, 180, 0.05);
+  transform: scale(0.98);
+}
+
+.team-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex: 1;
+}
+
+.team-logo {
+  width: 50px;
+  height: 50px;
+  border-radius: var(--border-radius-md);
+  overflow: hidden;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--app-bg-secondary);
+  border: 2px solid var(--app-border-color);
+}
+
+.team-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.team-logo-placeholder {
+  font-size: 1.5rem;
+  color: var(--app-text-secondary);
+}
+
+.team-details {
+  flex: 1;
+}
+
+.team-name {
+  margin: 0 0 0.25rem 0;
+  color: var(--app-text-primary);
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.team-captain {
+  margin: 0;
+  color: var(--app-text-secondary);
+  font-size: 0.9rem;
+}
+
+.btn-add-team {
+  background: var(--primary-blue);
+  color: var(--white);
+  border: none;
+  padding: 0.75rem 1.25rem;
+  border-radius: var(--border-radius-md);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.btn-add-team:hover:not(:disabled) {
+  background: var(--tertiary-blue);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 94, 180, 0.3);
+}
+
+.btn-add-team:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Responsive para gestión de equipos */
+@media (max-width: 768px) {
+  .teams-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .team-card {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+
+  .team-info {
+    justify-content: center;
+  }
+
+  .btn-add-team {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .team-management-section {
+    padding: 1.5rem;
+  }
+
+  .search-input-group {
+    max-width: none;
   }
 }
 </style>
