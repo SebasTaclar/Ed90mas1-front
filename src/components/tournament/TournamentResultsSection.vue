@@ -11,28 +11,28 @@
     <div class="stat-card">
      <div class="stat-icon">⚽</div>
      <div class="stat-content">
-      <span class="stat-number">24</span>
+      <span class="stat-number">{{ totalGoals }}</span>
       <span class="stat-label">Goles totales</span>
      </div>
     </div>
     <div class="stat-card">
      <div class="stat-icon">🥅</div>
      <div class="stat-content">
-      <span class="stat-number">8</span>
+      <span class="stat-number">{{ completedMatches.length }}</span>
       <span class="stat-label">Partidos jugados</span>
      </div>
     </div>
     <div class="stat-card">
      <div class="stat-icon">👤</div>
      <div class="stat-content">
-      <span class="stat-number">12</span>
-      <span class="stat-label">Goleadores</span>
+      <span class="stat-number">{{ totalPlayers }}</span>
+      <span class="stat-label">Jugadores activos</span>
      </div>
     </div>
     <div class="stat-card">
      <div class="stat-icon">🟨</div>
      <div class="stat-content">
-      <span class="stat-number">5</span>
+      <span class="stat-number">{{ yellowCards }}</span>
       <span class="stat-label">Tarjetas amarillas</span>
      </div>
     </div>
@@ -41,27 +41,50 @@
    <!-- Resultados recientes -->
    <div class="recent-results">
     <h3>Resultados recientes</h3>
-    <div class="results-list">
-     <div class="result-card">
+
+    <!-- Loading state -->
+    <div v-if="loading" class="loading-state">
+     <div class="spinner"></div>
+     <p>Cargando resultados...</p>
+    </div>
+
+    <!-- Sin resultados -->
+    <div v-else-if="recentResults.length === 0" class="empty-state">
+     <div class="empty-icon">🏆</div>
+     <h4>Sin resultados disponibles</h4>
+     <p>Los resultados aparecerán aquí cuando se completen los partidos.</p>
+    </div>
+
+    <!-- Lista de resultados -->
+    <div v-else class="results-list">
+     <div v-for="match in recentResults" :key="match.id" class="result-card">
       <div class="match-info">
-       <span class="match-date">10 Ago</span>
-       <span class="match-round">Jornada 1</span>
+       <span class="match-date">{{ formatMatchDate(match.matchDate, match.scheduledDate) }}</span>
+       <span class="match-round">{{ match.round || 'Jornada' }}</span>
       </div>
       <div class="match-result">
        <div class="team-result">
-        <img src="/images/logo.png" alt="Drink Team" @error="handleTeamImageError">
-        <span class="team-name">Drink Team</span>
-        <span class="team-score winner">3</span>
+        <img :src="match.homeTeam?.logoPath || '/images/logo.png'"
+             :alt="match.homeTeam?.name || 'Equipo Local'"
+             @error="handleTeamImageError">
+        <span class="team-name">{{ match.homeTeam?.name || 'Equipo Local' }}</span>
+        <span class="team-score" :class="getWinnerClass(match.homeScore || 0, match.awayScore || 0)">
+          {{ match.homeScore || 0 }}
+        </span>
        </div>
        <div class="result-separator">-</div>
        <div class="team-result">
-        <span class="team-score">1</span>
-        <span class="team-name">Tecno Stop</span>
-        <img src="/images/logo.png" alt="Tecno Stop" @error="handleTeamImageError">
+        <span class="team-score" :class="getWinnerClass(match.awayScore || 0, match.homeScore || 0)">
+          {{ match.awayScore || 0 }}
+        </span>
+        <span class="team-name">{{ match.awayTeam?.name || 'Equipo Visitante' }}</span>
+        <img :src="match.awayTeam?.logoPath || '/images/logo.png'"
+             :alt="match.awayTeam?.name || 'Equipo Visitante'"
+             @error="handleTeamImageError">
        </div>
       </div>
       <div class="match-actions">
-       <button class="action-btn">Ver detalles</button>
+       <button class="action-btn" @click="viewMatchDetails(match)">Ver detalles</button>
       </div>
      </div>
     </div>
@@ -71,10 +94,129 @@
 </template>
 
 <script setup lang="ts">
-const handleTeamImageError = (event: Event) => {
- const img = event.target as HTMLImageElement
- img.src = '/images/logo.png'
+import { computed, onMounted, ref } from 'vue'
+import { useFixtures } from '@/composables/useFixtures'
+import type { Tournament } from '@/types/TournamentType'
+import type { Match } from '@/services/matchesService'
+
+interface Props {
+  tournament?: Tournament | null
 }
+
+const props = defineProps<Props>()
+
+// Composables
+const { loadTournamentMatches } = useFixtures()
+
+// Estado reactivo
+const matches = ref<Match[]>([])
+const loading = ref(false)
+
+// Computed para estadísticas generales
+const totalGoals = computed(() => {
+  return matches.value.reduce((total, match) => {
+    const homeScore = match.homeScore || 0
+    const awayScore = match.awayScore || 0
+    return total + homeScore + awayScore
+  }, 0)
+})
+
+const completedMatches = computed(() => {
+  return matches.value.filter(match =>
+    match.status === 'completed' || match.status === 'finished'
+  )
+})
+
+const totalPlayers = computed(() => {
+  const playerIds = new Set<number>()
+
+  matches.value.forEach(match => {
+    // Agregar jugadores que marcaron goles (si está disponible)
+    if (match.attendingPlayers) {
+      Object.values(match.attendingPlayers).forEach(players => {
+        players.forEach(playerId => playerIds.add(playerId))
+      })
+    }
+  })
+
+  return playerIds.size
+})
+
+const yellowCards = computed(() => {
+  // Placeholder por ahora - se puede expandir cuando tengamos datos de eventos
+  return Math.floor(completedMatches.value.length * 0.6)
+})
+
+// Computed para resultados recientes (últimos 5 partidos completados)
+const recentResults = computed(() => {
+  return matches.value
+    .filter(match => match.status === 'completed' || match.status === 'finished')
+    .sort((a, b) => {
+      const dateA = new Date(a.matchDate || a.scheduledDate || '')
+      const dateB = new Date(b.matchDate || b.scheduledDate || '')
+      return dateB.getTime() - dateA.getTime() // Más recientes primero
+    })
+    .slice(0, 5) // Solo los últimos 5
+})
+
+// Funciones auxiliares
+const handleTeamImageError = (event: Event) => {
+  const img = event.target as HTMLImageElement
+  img.src = '/images/logo.png'
+}
+
+const formatMatchDate = (matchDate?: string, scheduledDate?: string) => {
+  const date = new Date(matchDate || scheduledDate || '')
+  return date.toLocaleDateString('es-ES', {
+    day: 'numeric',
+    month: 'short'
+  })
+}
+
+const getWinnerClass = (teamScore: number, opponentScore: number) => {
+  return teamScore > opponentScore ? 'winner' : ''
+}
+
+const viewMatchDetails = (match: Match) => {
+  // Por ahora, mostrar información en consola
+  // En el futuro se puede navegar a una página de detalles del partido
+  console.log('Ver detalles del partido:', {
+    id: match.id,
+    teams: `${match.homeTeam?.name} vs ${match.awayTeam?.name}`,
+    score: `${match.homeScore || 0} - ${match.awayScore || 0}`,
+    date: match.matchDate || match.scheduledDate,
+    status: match.status
+  })
+}
+
+// Cargar datos
+const loadMatchesData = async () => {
+  if (!props.tournament?.id) return
+
+  loading.value = true
+  try {
+    const matchesData = await loadTournamentMatches(props.tournament.id)
+    matches.value = matchesData || []
+  } catch (error) {
+    console.error('Error cargando partidos:', error)
+    matches.value = []
+  } finally {
+    loading.value = false
+  }
+}
+
+// Lifecycle
+onMounted(async () => {
+  await loadMatchesData()
+})
+
+// Watch para recargar cuando cambie el torneo
+import { watch } from 'vue'
+watch(() => props.tournament?.id, async (newId) => {
+  if (newId) {
+    await loadMatchesData()
+  }
+}, { immediate: true })
 </script>
 
 <style scoped>
@@ -373,6 +515,81 @@ const handleTeamImageError = (event: Event) => {
 }
 
 [data-theme="dark"] .result-separator {
+ color: #cbd5e1;
+}
+
+.loading-state {
+ display: flex;
+ flex-direction: column;
+ align-items: center;
+ justify-content: center;
+ padding: 3rem;
+ gap: 1rem;
+}
+
+.spinner {
+ width: 40px;
+ height: 40px;
+ border: 4px solid #f3f4f6;
+ border-top: 4px solid #007bff;
+ border-radius: 50%;
+ animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+ 0% { transform: rotate(0deg); }
+ 100% { transform: rotate(360deg); }
+}
+
+.loading-state p {
+ color: #6c757d;
+ font-weight: 500;
+ margin: 0;
+}
+
+.empty-state {
+ display: flex;
+ flex-direction: column;
+ align-items: center;
+ justify-content: center;
+ padding: 3rem;
+ gap: 1rem;
+ text-align: center;
+}
+
+.empty-icon {
+ font-size: 3rem;
+ opacity: 0.5;
+}
+
+.empty-state h4 {
+ color: #6c757d;
+ font-size: 1.2rem;
+ font-weight: 600;
+ margin: 0;
+}
+
+.empty-state p {
+ color: #6c757d;
+ margin: 0;
+ max-width: 300px;
+}
+
+/* Dark mode para nuevos elementos */
+[data-theme="dark"] .loading-state p {
+ color: #cbd5e1;
+}
+
+[data-theme="dark"] .spinner {
+ border-color: #475569;
+ border-top-color: #3b82f6;
+}
+
+[data-theme="dark"] .empty-state h4 {
+ color: #cbd5e1;
+}
+
+[data-theme="dark"] .empty-state p {
  color: #cbd5e1;
 }
 

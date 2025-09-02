@@ -172,7 +172,8 @@
     <!-- Modal para configurar torneo -->
     <TournamentConfigurationPopup v-if="showConfigModal" :key="`tournament-${selectedTournament?.id || 'new'}`"
       :tournament-data="selectedTournament" :registered-teams="getRegisteredTeamsByTournament(selectedTournament?.id)"
-      @close="closeConfigModal" @save="handleConfigurationSave" />
+      @close="closeConfigModal" @save="handleConfigurationSave" @team-added="handleTeamAdded"
+      @team-add-error="handleTeamAddError" />
 
     <!-- Modal para cronograma de partidos -->
     <TournamentFixturesPopup v-if="showFixturesModal" :key="`fixtures-${selectedTournament?.id || 'new'}`"
@@ -191,6 +192,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import type { Tournament, TournamentConfiguration } from '@/types/TournamentType'
+import type { Team } from '@/types/TeamType'
 import { useTournaments } from '@/composables/useTournaments'
 import { useCategories } from '@/composables/useCategories'
 import { useTeams } from '@/composables/useTeams'
@@ -444,6 +446,35 @@ const handleConfigurationSave = async (configuration: TournamentConfiguration) =
     }
   }
   closeConfigModal()
+}
+
+const handleTeamAdded = async (team: Team) => {
+  try {
+    // Mostrar notificación de éxito
+    success(
+      'Equipo agregado',
+      `El equipo "${team.name}" se agregó exitosamente al torneo`
+    )
+
+    // Recargar datos para actualizar la lista de equipos registrados
+    await loadData()
+
+  } catch (err) {
+    console.error('Error handling team addition:', err)
+    const errorMessage = err instanceof Error ? err.message : 'Error desconocido'
+
+    error(
+      'Error al agregar equipo',
+      `No se pudo agregar el equipo al torneo: ${errorMessage}`
+    )
+  }
+}
+
+const handleTeamAddError = (data: { team: Team; error: string }) => {
+  error(
+    'Error al agregar equipo',
+    `No se pudo agregar el equipo "${data.team.name}" al torneo: ${data.error}`
+  )
 }
 
 // Funciones para eliminación
