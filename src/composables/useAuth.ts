@@ -5,11 +5,19 @@ import { authService, type LoginCredentials, type UserInfo } from '@/services/ap
 const isAuthenticated = ref(false)
 const currentUser = ref<UserInfo | null>(null)
 
+// Función para sincronizar estado con localStorage
+const syncState = () => {
+  isAuthenticated.value = authService.isAuthenticated()
+  currentUser.value = authService.getCurrentUser()
+}
+
+// Inicializar automáticamente
+syncState()
+
 export function useAuth() {
-  // Función para inicializar el estado de autenticación
+  // Función para inicializar el estado de autenticación (mantener compatibilidad)
   const initAuth = () => {
-    isAuthenticated.value = authService.isAuthenticated()
-    currentUser.value = authService.getCurrentUser()
+    syncState()
   }
 
   // Función de login
@@ -19,8 +27,7 @@ export function useAuth() {
 
       if (response.success) {
         // Actualizar estado reactivo
-        isAuthenticated.value = true
-        currentUser.value = authService.getCurrentUser()
+        syncState()
         return { success: true, message: response.message }
       } else {
         return { success: false, message: response.message }

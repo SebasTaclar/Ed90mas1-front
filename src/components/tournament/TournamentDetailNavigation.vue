@@ -1,6 +1,7 @@
 <template>
  <nav class="tournament-navigation">
-  <div class="nav-cards-container">
+  <!-- Navegación Desktop (tarjetas) -->
+  <div class="nav-cards-container desktop-nav">
    <div class="nav-cards-scroll" ref="navCardsScroll">
     <div v-for="section in navigationSections" :key="section.id"
      :class="['nav-card', { active: activeSection === section.id }]" @click="selectSection(section.id)">
@@ -26,6 +27,21 @@
     </button>
    </div>
   </div>
+
+  <!-- Navegación Mobile (pestañas) -->
+  <div class="nav-tabs-container mobile-nav">
+   <div class="nav-tabs-scroll" ref="navTabsScroll">
+    <button
+     v-for="section in navigationSections"
+     :key="section.id"
+     :class="['nav-tab', { active: activeSection === section.id }]"
+     @click="selectSection(section.id)"
+    >
+     <span class="nav-tab-icon">{{ section.icon }}</span>
+     <span class="nav-tab-label">{{ getMobileLabel(section.id) }}</span>
+    </button>
+   </div>
+  </div>
  </nav>
 </template>
 
@@ -46,10 +62,11 @@ interface Emits {
  (e: 'section-change', sectionId: string): void
 }
 
-const props = defineProps<Props>()
+defineProps<Props>()
 const emit = defineEmits<Emits>()
 
 const navCardsScroll = ref<HTMLElement | null>(null)
+const navTabsScroll = ref<HTMLElement | null>(null)
 const isNavScrollAtStart = ref(true)
 const isNavScrollAtEnd = ref(false)
 
@@ -58,8 +75,8 @@ const navigationSections: NavigationSection[] = [
  { id: 'cronograma', label: 'Cronograma', icon: '📅' },
  { id: 'resultados', label: 'Resultados', icon: '⚽' },
  { id: 'clasificacion', label: 'Clasificación', icon: '🏆' },
- { id: 'rankings', label: 'Rankings y encuestas', icon: '📊' },
- { id: 'fotos', label: 'Fotos, vídeos y noticias', icon: '📸' }
+ { id: 'rankings', label: 'Rankings', icon: '📊' },
+ { id: 'fotos', label: 'Multimedia', icon: '📸' }
 ]
 
 // Función para cambiar sección activa
@@ -77,6 +94,18 @@ const getNavigationDescription = (sectionId: string): string => {
   'fotos': 'Multimedia y noticias'
  }
  return descriptions[sectionId] || 'Información del torneo'
+}
+
+// Función para obtener etiquetas cortas para móvil
+const getMobileLabel = (sectionId: string): string => {
+ const mobileLabels: { [key: string]: string } = {
+  'cronograma': 'Cronograma',
+  'resultados': 'Resultados',
+  'clasificacion': 'Tabla',
+  'rankings': 'Rankings',
+  'fotos': 'Media'
+ }
+ return mobileLabels[sectionId] || 'Info'
 }
 
 // Funciones de scroll para navegación
@@ -416,6 +445,259 @@ onMounted(() => {
 }
 
 @media (max-width: 480px) {
+ .nav-cards-container {
+  padding: 1rem 0;
+ }
+
+ .nav-card {
+  min-width: 160px;
+  max-width: 160px;
+  padding: 0.875rem;
+ }
+
+ .nav-card-icon {
+  width: 35px;
+  height: 35px;
+  font-size: 1.125rem;
+ }
+
+ .nav-card-content h3 {
+  font-size: 0.9rem;
+ }
+
+ .nav-card-content p {
+  font-size: 0.75rem;
+ }
+}
+
+/* Navegación Mobile - Pestañas */
+.mobile-nav {
+ display: none;
+}
+
+.nav-tabs-container {
+ position: relative;
+ padding: 0;
+ width: 100%;
+ background: transparent;
+ border-bottom: 1px solid #e9ecef;
+}
+
+[data-theme="dark"] .nav-tabs-container {
+ background: transparent;
+ border-bottom-color: #475569;
+}
+
+.nav-tabs-scroll {
+ display: flex;
+ overflow-x: auto;
+ scroll-behavior: smooth;
+ scrollbar-width: none;
+ -ms-overflow-style: none;
+ padding: 0 1rem;
+}
+
+.nav-tabs-scroll::-webkit-scrollbar {
+ display: none;
+}
+
+.nav-tab {
+ display: flex;
+ flex-direction: column;
+ align-items: center;
+ justify-content: center;
+ gap: 0.25rem;
+ padding: 1rem 0.75rem;
+ min-width: 80px;
+ flex-shrink: 0;
+ background: none;
+ border: none;
+ cursor: pointer;
+ transition: all 0.3s ease;
+ position: relative;
+ text-decoration: none;
+ color: #6c757d;
+ border-radius: 0;
+}
+
+.nav-tab::after {
+ content: '';
+ position: absolute;
+ bottom: 0;
+ left: 50%;
+ transform: translateX(-50%);
+ width: 0;
+ height: 3px;
+ background: var(--primary-blue);
+ transition: all 0.3s ease;
+ border-radius: 2px 2px 0 0;
+}
+
+.nav-tab.active::after {
+ width: 80%;
+ box-shadow: 0 0 8px rgba(0, 94, 180, 0.4);
+}
+
+.nav-tab:hover {
+ color: var(--primary-blue);
+ background: rgba(0, 94, 180, 0.05);
+}
+
+.nav-tab.active {
+ color: var(--primary-blue);
+ background: rgba(0, 94, 180, 0.08);
+}
+
+.nav-tab-icon {
+ font-size: 1.25rem;
+ margin-bottom: 0.25rem;
+}
+
+.nav-tab-label {
+ font-size: 0.65rem;
+ font-weight: 600;
+ text-align: center;
+ line-height: 1.2;
+ text-transform: uppercase;
+ letter-spacing: 0.5px;
+}
+
+/* Estilos para modo oscuro */
+[data-theme="dark"] .nav-tab {
+ color: #cbd5e1;
+}
+
+[data-theme="dark"] .nav-tab:hover {
+ color: #4dabf7;
+ background: rgba(77, 171, 247, 0.1);
+}
+
+[data-theme="dark"] .nav-tab.active {
+ color: #4dabf7;
+ background: rgba(77, 171, 247, 0.15);
+}
+
+[data-theme="dark"] .nav-tab.active::after {
+ background: #4dabf7;
+ box-shadow: 0 0 8px rgba(77, 171, 247, 0.4);
+}
+
+/* Media queries para mostrar/ocultar navegaciones */
+@media (min-width: 769px) {
+ .desktop-nav {
+  display: block;
+ }
+
+ .mobile-nav {
+  display: none;
+ }
+}
+
+@media (max-width: 768px) {
+ .desktop-nav {
+  display: none;
+ }
+
+ .mobile-nav {
+  display: block;
+ }
+
+ .tournament-navigation {
+  position: fixed;
+  top: 70px;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  border-bottom: 1px solid #e9ecef;
+ }
+
+ /* Soporte para modo oscuro */
+ [data-theme="dark"] .tournament-navigation {
+  background: rgba(30, 41, 59, 0.95);
+  border-bottom-color: #475569;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+ }
+}
+
+/* Responsive para pestañas móviles */
+@media (max-width: 480px) {
+ .nav-tab {
+  min-width: 70px;
+  padding: 0.75rem 0.5rem;
+ }
+
+ .nav-tab-icon {
+  font-size: 1.1rem;
+ }
+
+ .nav-tab-label {
+  font-size: 0.6rem;
+ }
+}
+
+@media (max-width: 360px) {
+ .nav-tab {
+  min-width: 60px;
+  padding: 0.75rem 0.25rem;
+ }
+
+ .nav-tab-label {
+  font-size: 0.55rem;
+ }
+}
+
+/* Responsive existente actualizado */
+@media (max-width: 1024px) {
+ .nav-card {
+  min-width: 200px;
+  max-width: 200px;
+  padding: 1.25rem;
+ }
+
+ .nav-scroll-controls {
+  display: none;
+ }
+}
+
+/* Remover estilos móviles anteriores ya que usamos pestañas */
+@media (max-width: 768px) {
+ /* Estos estilos solo se aplicarán a las cards en caso de fallback */
+ .nav-cards-container {
+  padding: 1.5rem 0.25rem;
+  max-width: 100vw;
+ }
+
+ .nav-cards-scroll {
+  padding: 0.5rem 2rem;
+ }
+
+ .nav-card {
+  min-width: 200px;
+  max-width: 200px;
+  padding: 1.25rem;
+ }
+
+ .nav-card-icon {
+  width: 40px;
+  height: 40px;
+  font-size: 1.25rem;
+ }
+
+ .nav-card-content h3 {
+  font-size: 1rem;
+ }
+
+ .nav-card-content p {
+  font-size: 0.8rem;
+ }
+}
+
+@media (max-width: 480px) {
+ /* Estos estilos solo se aplicarán a las cards en caso de fallback */
  .nav-cards-container {
   padding: 1rem 0;
  }

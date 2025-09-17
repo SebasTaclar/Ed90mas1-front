@@ -15,17 +15,11 @@
       <!-- Loading state -->
       <div v-if="loading" class="loading-container">
         <div class="spinner"></div>
-        <p>Cargando estadísticas...</p>
+        <p>Cargando clasificación...</p>
       </div>
 
-      <!-- Error state -->
-      <div v-else-if="error" class="error-container">
-        <p>{{ error }}</p>
-        <button @click="loadStatistics" class="retry-btn">Reintentar</button>
-      </div>
-
-      <!-- Groups -->
-      <div v-else-if="groupedTeams.length > 0" class="groups-grid">
+      <!-- Grupos dinámicos -->
+      <div v-if="groupedTeams.length > 0" class="groups-grid">
         <div v-for="group in groupedTeams" :key="group.groupId" class="group-card">
           <div class="group-header">Grupo {{ group.groupName }}</div>
           <div class="classification-table">
@@ -34,20 +28,23 @@
               <div class="team">Equipo</div>
               <div class="points">PTS</div>
               <div class="games">PJ</div>
-              <div class="wins">PG</div>
-              <div class="draws">PE</div>
-              <div class="losses">PP</div>
+              <div class="wins">G</div>
+              <div class="draws">E</div>
+              <div class="losses">P</div>
               <div class="goals-for">GF</div>
               <div class="goals-against">GC</div>
               <div class="goal-diff">DG</div>
             </div>
             <div class="table-body">
-              <div v-for="(team, index) in group.teams" :key="team.teamId" class="table-row"
-                :class="getRowClass(index, group.teams.length)">
+              <div v-for="(team, index) in group.teams" :key="team.teamId"
+                   class="table-row" :class="getRowClass(index, group.teams.length)">
                 <div class="pos">{{ index + 1 }}</div>
                 <div class="team">
-                  <img :src="`/images/teams/${team.teamId}.png`" :alt="team.teamName" @error="handleTeamImageError">
-                  <span>{{ team.teamName }}</span>
+                  <img :src="getTeamLogoPath(team.teamId)"
+                       :alt="team.teamName"
+                       @error="handleTeamImageError"
+                       class="team-logo">
+                  <span class="team-name">{{ team.teamName }}</span>
                 </div>
                 <div class="points">{{ team.points }}</div>
                 <div class="games">{{ team.matchesPlayed }}</div>
@@ -64,11 +61,12 @@
       </div>
 
       <!-- Empty state -->
-      <div v-else class="empty-state">
+      <div v-else-if="!loading" class="empty-state">
         <p>No hay equipos configurados para este torneo</p>
+        <p><small>Revisa la configuración de grupos y equipos</small></p>
       </div>
 
-      <!-- Leyenda -->
+      <!-- Leyenda y siglas -->
       <div class="classification-bottom">
         <div class="classification-legend">
           <div class="legend-item qualify">
@@ -81,13 +79,13 @@
           </div>
         </div>
 
-        <div class="classification-legend-siglas">
+        <div class="classification-legend-siglas" aria-label="Significado de siglas">
           <h3>Significado de las siglas</h3>
           <ul class="siglas-list">
             <li><strong>PJ</strong> — Partidos Jugados</li>
-            <li><strong>PG</strong> — Partidos Ganados</li>
-            <li><strong>PE</strong> — Partidos Empatados</li>
-            <li><strong>PP</strong> — Partidos Perdidos</li>
+            <li><strong>G</strong> — Partidos Ganados</li>
+            <li><strong>E</strong> — Partidos Empatados</li>
+            <li><strong>P</strong> — Partidos Perdidos</li>
             <li><strong>GF</strong> — Goles a Favor</li>
             <li><strong>GC</strong> — Goles en Contra</li>
             <li><strong>DG</strong> — Diferencia de Gol</li>
@@ -102,26 +100,32 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useTournaments } from '@/composables/useTournaments'
-import { useTeams } from '@/composables/useTeams'
 import type { TeamStatistics } from '@/services/api/tournamentService'
 import type { Tournament } from '@/types/TournamentType'
-import type { Team } from '@/types/TeamType'
+
+// Interface para equipo con información de grupo
+interface TeamWithGroup {
+  id: number
+  name: string
+  logoPath?: string | null
+  groupId?: number
+  groupName?: string
+}
 
 // Props
 interface Props {
   tournament?: Tournament | null
+  tournamentTeams?: TeamWithGroup[]
 }
 
 const props = defineProps<Props>()
 
 // Composables
 const { getTournamentTeamStatistics } = useTournaments()
-const { teams, loadTeams } = useTeams()
 
 // State
 const teamStatistics = ref<TeamStatistics[]>([])
 const loading = ref(false)
-const error = ref<string | null>(null)
 
 // Interface para equipo con estadísticas
 interface TeamWithStats extends TeamStatistics {
@@ -137,65 +141,68 @@ interface GroupWithTeams {
 
 // Computed
 const groupedTeams = computed((): GroupWithTeams[] => {
-  if (!props.tournament?.groups || !props.tournament?.teamAssignments) {
+  if (!props.tournamentTeams || props.tournamentTeams.length === 0) {
     return []
   }
 
-  return props.tournament.groups.map(group => {
-    // Obtener los equipos asignados a este grupo
-    const groupTeamIds = props.tournament!.teamAssignments
-      ?.filter(assignment => assignment.groupId === group.id)
-      .map(assignment => assignment.teamId) || []
+  // Agrupar equipos por groupId
+  const groupsMap = new Map<number, GroupWithTeams>()
 
-    // Crear estadísticas para cada equipo del grupo
-    const groupTeams: TeamWithStats[] = groupTeamIds.map(teamId => {
-      // Buscar estadísticas del equipo
-      const stats = teamStatistics.value.find(stat => stat.teamId === teamId)
+  props.tournamentTeams.forEach(teamInfo => {
+    const groupId = teamInfo.groupId
+    const groupName = teamInfo.groupName || `Grupo ${groupId}`
 
-      // Buscar información del equipo
-      const teamInfo = teams.value.find(team => team.id === teamId)
+    if (!groupId) {
+      return
+    }
 
-      // Solo incluir equipos que existen en la lista de equipos
-      if (!teamInfo) {
-        return null
-      }
+    // Inicializar grupo si no existe
+    if (!groupsMap.has(groupId)) {
+      groupsMap.set(groupId, {
+        groupId,
+        groupName,
+        teams: []
+      })
+    }
 
-      if (stats) {
-        // Si tiene estadísticas, usar las reales
-        return {
-          ...stats,
-          teamName: teamInfo.name
-        }
-      } else {
-        // Si no tiene estadísticas, crear estadísticas vacías
-        return {
-          teamId,
-          teamName: teamInfo.name,
-          matchesPlayed: 0,
-          wins: 0,
-          draws: 0,
-          losses: 0,
-          goalsFor: 0,
-          goalsAgainst: 0,
-          goalDifference: 0,
-          points: 0
-        }
-      }
-    }).filter(team => team !== null) as TeamWithStats[]
+    // Buscar estadísticas del equipo (OPCIONAL - puede no existir si no ha jugado)
+    const stats = teamStatistics.value.find(stat => stat.teamId === teamInfo.id)
 
-    // Ordenar equipos por puntos, diferencia de goles, goles a favor
-    groupTeams.sort((a, b) => {
+    // Crear equipo con estadísticas (usar stats si existen, sino todo en 0)
+    const teamWithStats: TeamWithStats = stats ? {
+      ...stats,
+      teamName: teamInfo.name // Asegurar que usamos el nombre correcto
+    } : {
+      // Equipo sin estadísticas = no ha jugado = todo en 0
+      teamId: teamInfo.id,
+      teamName: teamInfo.name,
+      matchesPlayed: 0,
+      wins: 0,
+      draws: 0,
+      losses: 0,
+      goalsFor: 0,
+      goalsAgainst: 0,
+      goalDifference: 0,
+      points: 0
+    }
+
+    groupsMap.get(groupId)!.teams.push(teamWithStats)
+  })
+
+  // Convertir Map a Array y ordenar por groupId
+  const result = Array.from(groupsMap.values()).sort((a, b) => a.groupId - b.groupId)
+
+  // Ordenar equipos dentro de cada grupo por puntos, diferencia de goles, goles a favor
+  result.forEach(group => {
+    group.teams.sort((a, b) => {
       if (b.points !== a.points) return b.points - a.points
       if (b.goalDifference !== a.goalDifference) return b.goalDifference - a.goalDifference
-      return b.goalsFor - a.goalsFor
+      if (b.goalsFor !== a.goalsFor) return b.goalsFor - a.goalsFor
+      return a.teamName.localeCompare(b.teamName)
     })
-
-    return {
-      groupId: Number(group.id),
-      groupName: group.groupName || group.name,
-      teams: groupTeams
-    }
   })
+
+  return result
 })
 
 // Methods
@@ -204,8 +211,13 @@ const handleTeamImageError = (event: Event) => {
   img.src = '/images/logo.png'
 }
 
+const getTeamLogoPath = (teamId: number): string => {
+  const team = props.tournamentTeams?.find(t => t.id === teamId)
+  // Usar exactamente el mismo patrón que cronograma y resultados
+  return team?.logoPath || '/images/logo.png'
+}
+
 const getRowClass = (index: number, totalTeams: number): string => {
-  // Los primeros equipos clasifican, el último es eliminación
   if (index < Math.max(1, totalTeams - 1)) {
     return 'qualify'
   }
@@ -216,7 +228,6 @@ const loadStatistics = async () => {
   if (!props.tournament?.id) return
 
   loading.value = true
-  error.value = null
 
   try {
     const result = await getTournamentTeamStatistics(props.tournament.id)
@@ -224,11 +235,9 @@ const loadStatistics = async () => {
       teamStatistics.value = result.statistics
     } else {
       teamStatistics.value = []
-      error.value = result.message
     }
   } catch (err) {
     teamStatistics.value = []
-    error.value = 'Error al cargar las estadísticas'
     console.error('Error loading statistics:', err)
   } finally {
     loading.value = false
@@ -237,521 +246,421 @@ const loadStatistics = async () => {
 
 // Lifecycle
 onMounted(async () => {
-  await loadTeams() // Cargar equipos para obtener nombres
-  await loadStatistics()
+  try {
+    await loadStatistics()
+  } catch (error) {
+    console.error('Error in component mounting:', error)
+  }
 })
 
 // Watchers
-watch(() => props.tournament?.id, (newId) => {
-  if (newId) {
-    loadStatistics()
+watch(() => props.tournament?.id, async (newId, oldId) => {
+  if (newId && newId !== oldId) {
+    await loadStatistics()
   }
 })
 </script>
 
 <style scoped>
+/* Section header */
 .section-content {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 2rem 2rem 4rem 2rem;
+  padding: 0;
 }
 
 .section-header {
-  margin-bottom: 3rem;
+  margin-bottom: 2rem;
   text-align: center;
-  width: 100%;
 }
 
 .section-header h2 {
-  font-size: 2.5rem;
+  font-size: 1.875rem;
   font-weight: 700;
-  color: #ffffff;
-  margin: 0 0 0.5rem 0;
-  background: linear-gradient(135deg, #3498db, #2980b9);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+  color: var(--app-text-primary);
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
 }
 
 .section-description {
-  font-size: 1.1rem;
-  color: #bdc3c7;
+  color: var(--app-text-secondary);
+  font-size: 1rem;
   margin: 0;
 }
 
-.classification-container {
-  background: var(--bg-secondary);
-  width: 100vw;
-  margin-left: calc(50% - 50vw);
-  margin-right: calc(50% - 50vw);
-  box-sizing: border-box;
-  padding: 2rem 0;
-  border-top: 1px solid var(--border-primary);
-  border-bottom: 1px solid var(--border-primary);
-  overflow-x: hidden;
-}
-
+/* Tournament info */
 .tournament-info {
+  text-align: center;
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, var(--primary-blue) 0%, var(--tertiary-blue) 100%);
+  border-radius: var(--border-radius-lg);
+  color: white;
+  box-shadow: var(--shadow-medium);
+}
+
+.tournament-name {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.tournament-phase {
+  font-size: 1rem;
+  opacity: 0.9;
+}
+
+/* Loading */
+.loading-container {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  text-align: center;
-  gap: 0.15rem;
-  padding: 0 1rem 1rem;
-  width: calc(100% - 4rem);
-  max-width: 1200px;
-  margin: 0 auto 1rem auto;
-  color: var(--text-primary);
-}
-
-.tournament-info .tournament-name {
-  font-size: 1.25rem;
-  font-weight: 800;
-}
-
-.tournament-info .tournament-phase {
-  font-size: 0.95rem;
-  color: var(--text-secondary);
-}
-
-.loading-container,
-.error-container,
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 3rem 2rem;
-  color: var(--text-primary);
-  text-align: center;
+  padding: 4rem 0;
+  gap: 1rem;
 }
 
 .spinner {
   width: 40px;
   height: 40px;
-  border: 4px solid var(--border-primary);
-  border-top: 4px solid var(--primary-color);
+  border: 4px solid var(--app-border-color);
+  border-top: 4px solid var(--primary-blue);
   border-radius: 50%;
   animation: spin 1s linear infinite;
-  margin-bottom: 1rem;
 }
 
 @keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-
-  100% {
-    transform: rotate(360deg);
-  }
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
-.retry-btn {
-  background: var(--primary-color);
-  color: var(--white);
-  border: none;
-  padding: 0.75rem 1.5rem;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 600;
-  margin-top: 1rem;
-  transition: background 0.3s ease;
-}
-
-.retry-btn:hover {
-  background: var(--primary-color-dark);
-}
-
+/* Groups grid */
 .groups-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
   gap: 2rem;
-  padding: 0 2rem 3rem 2rem;
-  width: 100%;
-  max-width: 1400px;
-  margin: 0 auto;
+  padding: 0;
+  max-width: 100%;
 }
 
+/* Group card */
 .group-card {
-  background: var(--card-bg);
-  border-radius: 12px;
+  background: var(--app-bg-secondary);
+  border: 1px solid var(--app-border-color);
+  border-radius: var(--border-radius-lg);
   overflow: hidden;
-  box-shadow: 0 4px 12px var(--shadow-medium);
-  border: 1px solid var(--border-primary);
-  width: 100%;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
+  box-shadow: var(--shadow-medium);
+  transition: var(--transition-normal);
+}
+
+.group-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-heavy);
 }
 
 .group-header {
-  background: var(--primary-gradient);
-  color: var(--white);
+  background: linear-gradient(135deg, var(--primary-blue) 0%, var(--tertiary-blue) 100%);
+  color: white;
   font-weight: 700;
   font-size: 1.1rem;
   padding: 1rem 1.25rem;
   text-align: center;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
 }
 
+/* Classification table */
 .classification-table {
-  background: var(--card-bg);
-  overflow: visible;
-}
-
-.table-body {
-  background: var(--card-bg);
-}
-
-.classification-table::-webkit-scrollbar {
-  display: none;
-}
-
-.table-header,
-.table-row {
-  display: grid;
-  grid-template-columns: 40px 1fr 45px 40px 40px 40px 45px 45px 50px 45px;
-  gap: 0.25rem;
-  align-items: center;
-  padding: 0.6rem 0.8rem;
-  font-size: 0.8rem;
-  min-width: 0;
-  width: 100%;
+  background: var(--app-card-bg);
+  border-radius: var(--border-radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-light);
+  border: 1px solid var(--app-border-color);
 }
 
 .table-header {
-  background: var(--primary-color);
+  display: grid;
+  grid-template-columns: 50px 1fr 60px 50px 50px 50px 50px 60px 60px 60px;
+  background: var(--primary-blue);
   font-weight: 700;
-  color: var(--white);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  border-bottom: 2px solid var(--primary-color-dark);
-  font-size: 0.75rem;
+  font-size: 0.875rem;
+  color: white;
+}
+
+.table-header > div {
+  padding: 1rem 0.5rem;
+  text-align: center;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.table-header > div:last-child {
+  border-right: none;
+}
+
+.table-body {
+  background: var(--app-card-bg);
 }
 
 .table-row {
-  border-bottom: 1px solid var(--border-primary);
-  transition: all 0.2s ease;
-  background: var(--card-bg);
-  color: #ffffff;
-}
-
-.table-row:nth-child(even) {
-  background: var(--bg-secondary);
+  display: grid;
+  grid-template-columns: 50px 1fr 60px 50px 50px 50px 50px 60px 60px 60px;
+  align-items: center;
+  border-bottom: 1px solid var(--app-border-color);
+  transition: var(--transition-fast);
 }
 
 .table-row:hover {
-  background: var(--card-hover-bg);
-  transform: translateX(2px);
+  background: var(--app-hover-bg);
 }
 
-.table-row.qualify {
-  border-left: 4px solid #22c55e;
-  background: linear-gradient(90deg, rgba(34, 197, 94, 0.05), var(--card-bg));
+.table-row:last-child {
+  border-bottom: none;
 }
 
-.table-row.qualify::after {
-  content: '';
-}
-
-.table-row.elimination {
-  border-left: 4px solid #ef4444;
-  background: linear-gradient(90deg, rgba(239, 68, 68, 0.05), var(--card-bg));
-}
-
-.table-row.elimination::after {
-  content: '';
-}
-
+/* Position */
 .pos {
-  font-weight: 700;
-  color: #ffffff;
   text-align: center;
-  background: var(--primary-color-alpha-30);
-  border-radius: 6px;
-  padding: 0.3rem 0.1rem;
-  font-size: 0.8rem;
-  border: 1px solid var(--border-primary);
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--app-text-primary);
+  padding: 0.75rem 0.5rem;
 }
 
+/* Team info */
 .team {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  font-weight: 600;
-  color: #ffffff;
-  padding: 0.2rem 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  gap: 0.75rem;
+  padding: 0.75rem 0.5rem;
 }
 
-.team img {
-  width: 24px;
-  height: 24px;
-  border-radius: 4px;
+.team-logo {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
   object-fit: cover;
-  border: 1px solid var(--border-primary);
-  flex-shrink: 0;
+  border: 2px solid var(--app-border-color);
+  background: var(--app-bg-primary);
 }
 
-.team span {
-  font-size: 0.8rem;
+.team-name {
   font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  color: var(--app-text-primary);
+  font-size: 0.95rem;
 }
 
+/* Stats cells */
+.points,
 .games,
 .wins,
 .draws,
 .losses,
 .goals-for,
 .goals-against,
-.goal-diff,
-.points {
+.goal-diff {
   text-align: center;
   font-weight: 600;
-  color: #ffffff;
-  padding: 0.2rem 0.1rem;
-  font-size: 0.8rem;
+  font-size: 0.9rem;
+  padding: 0.75rem 0.5rem;
+  color: var(--app-text-primary);
+}
+
+.points {
+  background: var(--primary-blue);
+  color: white;
+  font-weight: 700;
+  font-size: 1rem;
+  border-radius: 6px;
+  margin: 0.25rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 24px;
-}
-
-.wins {
-  color: #ffffff;
-}
-
-.draws {
-  color: #ffffff;
-}
-
-.losses {
-  color: #ffffff;
-}
-
-.goals-for {
-  color: #ffffff;
-}
-
-.goals-against {
-  color: #ffffff;
+  min-height: 32px;
 }
 
 .goal-diff {
-  color: #ffffff;
   font-weight: 700;
 }
 
-.goal-diff::before {
-  display: none;
+.goal-diff.positive {
+  color: var(--success);
 }
 
-.points {
-  color: #ffffff;
-  font-size: 0.9rem;
-  font-weight: 900;
+.goal-diff.negative {
+  color: var(--danger);
 }
 
-.classification-legend {
-  display: flex;
-  gap: 2rem;
-  padding: 2rem 2rem 1rem;
-  flex-wrap: wrap;
-  background: var(--bg-secondary);
-  justify-content: center;
-  margin-top: 2rem;
-  border-top: 2px solid var(--border-primary);
+.goal-diff.zero {
+  color: var(--app-text-secondary);
 }
 
-.legend-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: var(--text-primary);
+/* Row position indicators */
+.table-row.qualify {
+  border-left: 4px solid var(--success);
 }
 
-.legend-color {
-  width: 16px;
-  height: 16px;
-  border-radius: 3px;
+.table-row.elimination {
+  border-left: 4px solid var(--danger);
 }
 
-.legend-item.qualify .legend-color {
-  background: #22c55e;
-}
-
-.legend-item.elimination .legend-color {
-  background: #ef4444;
-}
-
-.classification-legend-siglas {
-  padding: 1.25rem 2rem 2rem;
-  background: transparent;
-  color: var(--text-primary);
-  width: 100%;
-  box-sizing: border-box;
-  border-top: 1px solid var(--border-primary);
-}
-
-.classification-legend-siglas h3 {
-  margin: 0 0 0.5rem 0;
-  font-size: 1.05rem;
-  color: var(--text-primary);
-  font-weight: 700;
+/* Empty state */
+.empty-state {
   text-align: center;
+  padding: 4rem 2rem;
+  color: var(--app-text-secondary);
 }
 
-.siglas-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.5rem 1.5rem;
-  max-width: 600px;
-  margin: 0 auto;
+.empty-state h3 {
+  font-size: 1.25rem;
+  margin-bottom: 0.5rem;
+  color: var(--app-text-primary);
 }
 
-.siglas-list li {
-  color: var(--text-secondary);
-  font-size: 0.95rem;
+/* Dark theme adjustments */
+:root[data-theme='dark'] .group-card {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
 }
 
-.siglas-list li strong {
-  color: var(--primary-color);
-  margin-right: 0.4rem;
+:root[data-theme='dark'] .table-header {
+  background: rgba(255, 255, 255, 0.03);
 }
 
-/* Responsive */
-@media (max-width: 1024px) {
+:root[data-theme='dark'] .team-row:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+:root[data-theme='dark'] .team-logo {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Mobile responsive */
+/* Tablet styles */
+@media (max-width: 1024px) and (min-width: 769px) {
   .groups-grid {
     grid-template-columns: 1fr;
-    gap: 1.5rem;
-    padding: 1rem;
-    max-width: 100%;
+    max-width: 800px;
+    margin: 0 auto;
   }
 }
 
 @media (max-width: 768px) {
-  .groups-grid {
-    padding: 0.5rem;
+  .classification-container {
+    padding: 0.5rem 0;
   }
 
+  .groups-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    margin: 0;
+    padding: 0 0.25rem;
+  }
+  
+  .group-card {
+    margin: 0;
+    border-radius: var(--border-radius-md);
+  }
+  
   .table-header,
   .table-row {
-    grid-template-columns: 35px 1fr 40px 35px 35px 35px 40px 40px 45px 40px;
-    padding: 0.5rem 0.6rem;
-    font-size: 0.75rem;
-    gap: 0.2rem;
+    grid-template-columns: 25px 1fr 35px 25px 25px 25px 25px 30px 30px 35px;
+    font-size: 0.65rem;
   }
-
-  .team img {
+  
+  .table-header > div,
+  .table-row > div {
+    padding: 0.4rem 0.1rem;
+  }
+  
+  .team-logo {
     width: 20px;
     height: 20px;
   }
-
-  .team span {
-    font-size: 0.75rem;
+  
+  .team-name {
+    font-size: 0.65rem;
+    padding-left: 0.2rem;
   }
 
   .pos {
-    padding: 0.25rem 0.1rem;
-    font-size: 0.75rem;
-  }
-
-  .games,
-  .wins,
-  .draws,
-  .losses,
-  .goals-for,
-  .goals-against,
-  .goal-diff,
-  .points {
-    font-size: 0.75rem;
-    padding: 0.2rem 0.05rem;
-    min-height: 20px;
+    font-size: 0.6rem;
+    font-weight: 600;
   }
 
   .points {
-    font-size: 0.8rem;
+    font-size: 0.7rem;
+    font-weight: 700;
   }
 
-  .siglas-list {
-    grid-template-columns: 1fr;
-  }
-
-  .classification-legend-siglas {
-    padding: 0.75rem 1rem 1rem;
+  .group-header {
+    font-size: 0.9rem;
+    padding: 0.6rem;
   }
 }
 
 @media (max-width: 480px) {
-  .classification-container {
-    padding: 1rem 0;
+  .section-header h2 {
+    font-size: 1.3rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .tournament-info {
+    margin: 0 0.25rem 1rem 0.25rem;
+    padding: 0.5rem;
+  }
+  
+  .tournament-name {
+    font-size: 1rem;
   }
 
+  .groups-grid {
+    padding: 0 0.1rem;
+    gap: 0.75rem;
+  }
+  
   .table-header,
   .table-row {
-    grid-template-columns: 30px 1fr 35px 30px 30px 30px 35px 35px 40px 35px;
-    padding: 0.4rem 0.5rem;
-    font-size: 0.7rem;
-    gap: 0.15rem;
+    grid-template-columns: 20px 1fr 30px 22px 22px 22px 22px 28px 28px 30px;
+    font-size: 0.55rem;
+  }
+  
+  .table-header > div,
+  .table-row > div {
+    padding: 0.3rem 0.05rem;
   }
 
-  .team img {
-    width: 18px;
-    height: 18px;
+  .team-logo {
+    width: 16px;
+    height: 16px;
   }
-
-  .team span {
-    font-size: 0.7rem;
+  
+  .team-name {
+    font-size: 0.55rem;
+    padding-left: 0.15rem;
+    line-height: 1.2;
   }
 
   .pos {
-    padding: 0.2rem 0.05rem;
-    font-size: 0.7rem;
+    font-size: 0.5rem;
+    font-weight: 600;
   }
-
-  .games,
-  .wins,
-  .draws,
-  .losses,
-  .goals-for,
-  .goals-against,
-  .goal-diff,
+  
   .points {
-    font-size: 0.7rem;
-    padding: 0.15rem 0.03rem;
-    min-height: 18px;
-  }
-
-  .points {
-    font-size: 0.75rem;
-  }
-
-  .classification-legend {
-    padding: 1rem;
-    gap: 1rem;
+    font-size: 0.6rem;
+    font-weight: 700;
   }
 
   .group-header {
-    font-size: 1rem;
-    padding: 0.8rem 1rem;
+    font-size: 0.8rem;
+    padding: 0.5rem;
+  }
+
+  /* Hacer las columnas numéricas más compactas */
+  .games, .wins, .draws, .losses {
+    font-size: 0.5rem;
+  }
+
+  .goals-for, .goals-against, .goal-diff {
+    font-size: 0.5rem;
   }
 }
 </style>

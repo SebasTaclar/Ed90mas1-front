@@ -60,6 +60,22 @@
             </div>
           </div>
         </div>
+
+        <div class="card" @click="navigateTo('/admin/finances')">
+          <div class="card-header">
+            <h3>💰 Gestión Financiera</h3>
+          </div>
+          <div class="card-content">
+            <div class="metric">
+              <span class="value">{{ paymentsCount }}</span>
+              <span class="label">Pagos pendientes</span>
+            </div>
+            <div class="admin-indicator finances"></div>
+            <div class="card-description">
+              <p>Administrar pagos de equipos, multas, estados de cuenta y finanzas del torneo.</p>
+            </div>
+          </div>
+        </div>
       </template>
 
       <!-- Card para equipos -->
@@ -117,6 +133,7 @@ const teamsCount = computed(() => isLoading.value ? '...' : (teams.value?.length
 const tournamentsCount = computed(() => isLoading.value ? '...' : (tournaments.value?.length || 0));
 const categoriesCount = computed(() => isLoading.value ? '...' : (categories.value?.length || 0));
 const playersCount = computed(() => isLoading.value ? '...' : (players.value?.length || 0));
+const paymentsCount = computed(() => isLoading.value ? '...' : '15'); // Datos mock por ahora
 // Funciones
 const loadData = async () => {
   try {
@@ -278,6 +295,10 @@ onMounted(() => {
 
 .admin-indicator.categories {
   background-color: #4caf50;
+}
+
+.admin-indicator.finances {
+  background-color: #ffa726;
 }
 
 .admin-indicator.players {
