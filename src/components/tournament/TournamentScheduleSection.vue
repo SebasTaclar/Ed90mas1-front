@@ -1,37 +1,39 @@
 ﻿<template>
   <div class="tournament-schedule">
-    <div class="section-header">
+    <div class="section-header desktop-header">
       <h2> Cronograma de Partidos</h2>
       <p>Calendario completo ordenado por fecha</p>
     </div>
 
     <!-- Filtros simplificados -->
     <div class="filters-container">
-      <div class="filter-group">
-        <label>Equipo:</label>
-        <div class="filter-select">
-          <select v-model="selectedTeam">
-            <option value="">Todos los equipos</option>
-            <option v-for="team in availableTeams" :key="team" :value="team">{{ team }}</option>
-          </select>
+      <div class="filters-row">
+        <div class="filter-group">
+          <label>Equipo:</label>
+          <div class="filter-select">
+            <select v-model="selectedTeam">
+              <option value="">Todos los equipos</option>
+              <option v-for="team in availableTeams" :key="team" :value="team">{{ team }}</option>
+            </select>
+          </div>
         </div>
-      </div>
 
-      <div class="filter-group">
-        <label>Fecha:</label>
-        <div class="filter-select date-select">
-          <select v-model="selectedDate">
-            <option value="">Todas las fechas</option>
-            <option v-for="date in availableDates" :key="date" :value="date">
-              {{ formatDateForSelect(date) }}
-            </option>
-          </select>
+        <div class="filter-group">
+          <label>Fecha:</label>
+          <div class="filter-select date-select">
+            <select v-model="selectedDate">
+              <option value="">Todas las fechas</option>
+              <option v-for="date in availableDates" :key="date" :value="date">
+                {{ formatDateForSelect(date) }}
+              </option>
+            </select>
+          </div>
         </div>
-      </div>
 
-      <button v-if="hasActiveFilters" @click="clearFilters" class="clear-btn">
-        Limpiar
-      </button>
+        <button v-if="hasActiveFilters" @click="clearFilters" class="clear-btn">
+          <span>✕</span>
+        </button>
+      </div>
     </div>
 
     <!-- Estadísticas rápidas y acciones -->
@@ -158,7 +160,7 @@
             <span class="matches-count-simple">{{ matchesForDate.length }}</span>
           </div>
 
-          <!-- Tabla para esta fecha -->
+          <!-- Tabla para esta fecha (Desktop) -->
           <div class="matches-table">
             <div class="table-header">
               <div class="col-time">Hora</div>
@@ -169,7 +171,7 @@
               <div class="col-actions">Acciones</div>
             </div>
 
-            <div v-for="match in matchesForDate" :key="match.id" class="table-row" :class="getRowClass(match)">
+            <div v-for="match in matchesByDate[date]" :key="match.id" class="table-row" :class="getRowClass(match)">
               <div class="col-time">
                 <div v-if="isEditing(match.id!, 'date')" class="edit-time-container">
                   <div class="edit-inputs">
@@ -235,12 +237,22 @@
 
               <div class="col-status">
                 <span class="status-badge" :class="getStatusClass(match.status)">
-                  {{ getStatusText(match.status) }}
+                  {{ getConfirmationText(match) }}
                 </span>
               </div>
 
               <div class="col-actions">
                 <div class="action-buttons">
+                  <!-- Botón confirmar partido -->
+                  <button
+                    v-if="isAuthenticated && isAdmin"
+                    @click="toggleMatchConfirmation(match)"
+                    class="edit-btn confirm-btn"
+                    :class="{ 'confirmed': isMatchConfirmed(match) }"
+                    :title="isMatchConfirmed(match) ? 'Partido confirmado - Click para desconfirmar' : 'Confirmar partido'"
+                  >
+                    {{ isMatchConfirmed(match) ? '✅' : '⚪' }}
+                  </button>
                   <button @click="goToMatchVersus(match)" class="edit-btn match-versus"
                     :disabled="!match.homeTeam || !match.awayTeam" title="Confirmar jugadores del partido">
                     👥
@@ -261,6 +273,110 @@
                   <button v-if="match.round && match.round.trim() !== '' && match.round !== 'Fase de grupos'"
                     @click="confirmDeleteMatch(match)" class="edit-btn delete-btn"
                     :disabled="editingMatch !== null || isDeletingMatch" title="Eliminar partido eliminatorio">
+                    🗑️
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Cards para móvil -->
+          <div class="matches-mobile-container">
+            <div v-for="match in matchesByDate[date]" :key="'mobile-' + match.id"
+                 class="match-card-mobile"
+                 :class="getMatchCardClass(match)"
+                 @click="goToMatchDetail(match)">
+
+              <!-- Header del partido -->
+              <div class="match-header-mobile">
+                <div class="match-time">
+                  <span class="time">{{ formatTime(match.matchDate || match.scheduledDate) }}</span>
+                  <span class="date-short">{{ formatDateShort(match.matchDate || match.scheduledDate) }}</span>
+                </div>
+                <div class="match-status">
+                  <span class="status-badge-mobile" :class="getStatusClass(match.status)">
+                    {{ getConfirmationText(match) }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Equipos -->
+              <div class="teams-container-mobile">
+                <div class="team-mobile home">
+                  <img :src="match.homeTeam?.logoPath || '/images/logo.png'"
+                       :alt="match.homeTeam?.name"
+                       class="team-logo-mobile"
+                       @error="handleImageError">
+                  <span class="team-name-mobile">{{ match.homeTeam?.name || 'TBD' }}</span>
+                  <div v-if="getTeamScore(match, 'home')" class="team-score">{{ getTeamScore(match, 'home') }}</div>
+                </div>
+
+                <div class="vs-mobile">
+                  <span>vs</span>
+                </div>
+
+                <div class="team-mobile away">
+                  <img :src="match.awayTeam?.logoPath || '/images/logo.png'"
+                       :alt="match.awayTeam?.name"
+                       class="team-logo-mobile"
+                       @error="handleImageError">
+                  <span class="team-name-mobile">{{ match.awayTeam?.name || 'TBD' }}</span>
+                  <div v-if="getTeamScore(match, 'away')" class="team-score">{{ getTeamScore(match, 'away') }}</div>
+                </div>
+              </div>
+
+              <!-- Footer del partido -->
+              <div class="match-footer-mobile">
+                <div class="match-info">
+                  <span class="location-mobile">📍 {{ match.location || 'Por definir' }}</span>
+                  <span v-if="match.round" class="round-mobile">🏆 {{ match.round }}</span>
+                </div>
+
+                <div class="match-actions-mobile">
+                  <!-- Botón confirmar partido para móvil -->
+                  <button
+                    v-if="isAuthenticated && isAdmin"
+                    @click.stop="toggleMatchConfirmation(match)"
+                    class="edit-btn-mobile confirm-btn-mobile"
+                    :class="{ 'confirmed': isMatchConfirmed(match) }"
+                    :title="isMatchConfirmed(match) ? 'Confirmado' : 'Sin confirmar'"
+                  >
+                    {{ isMatchConfirmed(match) ? '✅ Confirmado' : '⚪ Sin confirmar' }}
+                  </button>
+                  <button v-if="match.status === 'in_progress' || match.status?.includes('in_progress')"
+                          @click.stop="goToMatchLive(match)"
+                          class="live-btn-mobile">
+                    🔴 EN VIVO
+                  </button>
+                  <button v-else-if="canStartMatch(match)"
+                          @click.stop="attemptStartMatch(match)"
+                          class="start-btn-mobile"
+                          title="Iniciar partido">
+                    ⚽ Iniciar
+                  </button>
+                  <button @click.stop="goToMatchVersus(match)"
+                          class="edit-btn-mobile match-versus-mobile"
+                          :disabled="!match.homeTeam || !match.awayTeam"
+                          title="Confirmar jugadores del partido">
+                    👥 Plantilla
+                  </button>
+                  <button @click.stop="startEditing(match.id!, 'date')"
+                          class="edit-btn-mobile date-edit-mobile"
+                          :disabled="editingMatch !== null"
+                          title="Editar fecha y hora">
+                    📅
+                  </button>
+                  <button @click.stop="startEditing(match.id!, 'location')"
+                          class="edit-btn-mobile location-edit-mobile"
+                          :disabled="editingMatch !== null"
+                          title="Editar lugar">
+                    📍
+                  </button>
+                  <button v-if="match.round && match.round.trim() !== '' && match.round !== 'Fase de grupos'"
+                          @click.stop="confirmDeleteMatch(match)"
+                          class="edit-btn-mobile delete-btn-mobile"
+                          :disabled="editingMatch !== null || isDeletingMatch"
+                          title="Eliminar partido eliminatorio">
                     🗑️
                   </button>
                 </div>
@@ -288,6 +404,7 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuth } from '@/composables/useAuth'
 import type { Match } from '@/services/matchesService'
 import { matchesService } from '@/services/matchesService'
 import CreateMatchPopup from '@/components/CreateMatchPopup.vue'
@@ -310,6 +427,7 @@ const emit = defineEmits<{
 }>()
 
 const router = useRouter()
+const { isAuthenticated, isAdmin } = useAuth()
 
 // Estado de filtros
 const selectedTeam = ref('')
@@ -328,6 +446,9 @@ const isDeletingMatch = ref(false)
 
 // Estado de resaltado
 const highlightedMatch = ref<number | null>(null)
+
+// Estado de confirmación de partidos (local, no se guarda en BD)
+const matchConfirmations = ref<Record<number, boolean>>({})
 
 // Estado del modal de creación de partidos
 const showCreateMatchModal = ref(false)
@@ -530,6 +651,20 @@ const getStatusText = (status?: string) => {
   }
 }
 
+// Función para obtener el texto de confirmación
+const getConfirmationText = (match: Match) => {
+  if (match.status === 'scheduled' || match.status === 'not_started' || !match.status) {
+    const isConfirmed = match.id ? (matchConfirmations.value[match.id] || false) : false
+    return isConfirmed ? 'Confirmado' : 'Sin confirmar'
+  }
+  return getStatusText(match.status)
+}
+
+// Helper para obtener el estado de confirmación local
+const isMatchConfirmed = (match: Match) => {
+  return match.id ? (matchConfirmations.value[match.id] || false) : false
+}
+
 const getStatusClass = (status?: string) => {
   switch (status) {
     case 'scheduled':
@@ -549,6 +684,54 @@ const getStatusClass = (status?: string) => {
       return 'status-cancelled'
     default:
       return 'status-scheduled'
+  }
+}
+
+// Nuevas funciones para el diseño móvil
+const formatDateShort = (dateString?: string) => {
+  if (!dateString) return ''
+  const date = new Date(dateString)
+  const today = new Date()
+  const isToday = date.toDateString() === today.toDateString()
+
+  if (isToday) {
+    return 'Hoy'
+  }
+
+  return date.toLocaleDateString('es-ES', {
+    month: 'short',
+    day: 'numeric'
+  })
+}
+
+const getMatchCardClass = (match: Match) => {
+  const classes = []
+
+  if (match.status === 'in_progress' || match.status?.includes('in_progress')) {
+    classes.push('live')
+  } else if (match.status === 'completed' || match.status === 'finished') {
+    classes.push('finished')
+  }
+
+  return classes.join(' ')
+}
+
+const getTeamScore = (match: Match, team: 'home' | 'away') => {
+  if (!match.homeScore && !match.awayScore) return null
+  return team === 'home' ? match.homeScore || '0' : match.awayScore || '0'
+}
+
+const canStartMatch = (match: Match) => {
+  return match.homeTeam && match.awayTeam &&
+         (match.status === 'scheduled' || match.status === 'not_started' || !match.status)
+}
+
+const goToMatchDetail = (match: Match) => {
+  if (match.status === 'in_progress' || match.status?.includes('in_progress')) {
+    goToMatchLive(match)
+  } else {
+    // Podrías agregar aquí navegación a detalles del partido
+    console.log('Ver detalles del partido:', match.id)
   }
 }
 
@@ -892,6 +1075,25 @@ const stopAutoRefresh = () => {
   }
 }
 
+// Función para confirmar/desconfirmar partido
+const toggleMatchConfirmation = (match: Match) => {
+  if (!isAuthenticated.value || !isAdmin.value) {
+    alert('Solo los administradores pueden confirmar partidos')
+    return
+  }
+
+  if (!match.id) {
+    console.error('No se puede confirmar: el partido no tiene ID')
+    return
+  }
+
+  // Solo manejar estado local - no guardar en base de datos
+  const currentStatus = matchConfirmations.value[match.id] || false
+  matchConfirmations.value[match.id] = !currentStatus
+
+  console.log(`Partido ${match.id} ${!currentStatus ? 'confirmado' : 'sin confirmar'} localmente`)
+}
+
 // Lifecycle hooks para limpiar el interval
 onMounted(() => {
   // Se iniciará cuando se abra el modal
@@ -907,6 +1109,16 @@ onUnmounted(() => {
   background: var(--app-bg-secondary);
   border-radius: var(--border-radius-lg);
   padding: 2rem;
+}
+
+/* Ocultar cards móviles en desktop */
+.matches-mobile-container {
+  display: none;
+}
+
+/* Mostrar tabla desktop por defecto */
+.matches-table {
+  display: block;
 }
 
 .section-header {
@@ -2149,9 +2361,9 @@ onUnmounted(() => {
 }
 
 .status-scheduled {
-  background: #fef3c7;
-  color: #d97706;
-  border-color: #f59e0b;
+  background: rgba(128, 128, 128, 0.1);
+  color: var(--app-text-secondary);
+  border-color: rgba(128, 128, 128, 0.3);
 }
 
 .status-live {
@@ -2242,17 +2454,304 @@ onUnmounted(() => {
     padding: 1rem;
   }
 
+  /* Filtros móviles más compactos */
   .filters-container {
-    flex-direction: column;
-    align-items: stretch;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .filters-row {
+    display: flex;
+    gap: 0.75rem;
+    align-items: end;
+    flex-wrap: wrap;
   }
 
   .filter-group {
     min-width: auto;
+    flex: 1;
+    min-width: 120px;
+  }
+
+  .filter-group label {
+    font-size: 0.8rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .filter-select {
+    padding: 0.5rem;
+    font-size: 0.85rem;
+    min-width: 120px;
+  }
+
+  .clear-btn {
+    padding: 0.5rem;
+    background: rgba(220, 53, 69, 0.9);
+    border: none;
+    border-radius: 6px;
+    color: white;
+    cursor: pointer;
+    font-size: 0.9rem;
+    min-width: 40px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Ocultar tabla desktop en móvil */
+  .matches-table {
+    display: none !important;
+  }
+
+  /* Mostrar cards móviles solo en móvil */
+  .matches-mobile-container {
+    display: flex !important;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .date-header-mobile {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: var(--primary-blue);
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+  }
+
+  .date-title {
+    color: white;
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0;
+  }
+
+  .matches-count {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.8rem;
+  }
+
+  .match-card-mobile {
+    background: var(--app-bg-primary);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .match-card-mobile:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  .match-card-mobile.live {
+    border-color: #dc3545;
+    background: var(--app-bg-primary);
+    box-shadow: 0 2px 12px rgba(220, 53, 69, 0.2);
+  }
+
+  .match-card-mobile.finished {
+    background: var(--app-bg-secondary);
+    opacity: 0.9;
+  }
+
+  .match-header-mobile {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: var(--app-bg-secondary);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .match-time {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+  }
+
+  .match-time .time {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+  }
+
+  .match-time .date-short {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+  }
+
+  .match-status .status-badge-mobile {
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    box-shadow: none !important;
+    border: 1px solid transparent;
+    background: transparent;
+  }
+
+  .status-badge-mobile.status-scheduled {
+    background: transparent !important;
+    color: var(--app-text-secondary) !important;
+    border: 1px solid rgba(128, 128, 128, 0.2) !important;
+    box-shadow: none !important;
+  }
+
+  .status-badge-mobile.status-live {
+    background: #ffebee;
+    color: #d32f2f;
+  }
+
+  .status-badge-mobile.status-completed {
+    background: #e8f5e8;
+    color: #2e7d32;
+  }
+
+  .teams-container-mobile {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    gap: 0.75rem;
+  }
+
+  .team-mobile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1;
+    text-align: center;
+  }
+
+  .team-logo-mobile {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+
+  .team-name-mobile {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.2;
+  }
+
+  .team-score {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--primary-blue);
+  }
+
+  .vs-mobile {
+    padding: 0.25rem 0.5rem;
+    background: var(--app-bg-secondary);
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+  }
+
+  .match-footer-mobile {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: var(--app-bg-secondary);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .match-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .location-mobile, .round-mobile {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+  }
+
+  .match-actions-mobile {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    justify-content: flex-end;
+  }
+
+  .live-btn-mobile {
+    padding: 0.25rem 0.5rem;
+    background: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: 600;
+  }
+
+  .start-btn-mobile {
+    padding: 0.25rem 0.5rem;
+    background: #28a745;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: 600;
+  }
+
+  .edit-btn-mobile {
+    padding: 0.25rem 0.4rem;
+    background: var(--primary-blue);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.6rem;
+    font-weight: 500;
+    margin-left: 0.25rem;
+    transition: all 0.3s ease;
+  }
+
+  .edit-btn-mobile:hover {
+    background: var(--tertiary-blue);
+    transform: translateY(-1px);
+  }
+
+  .edit-btn-mobile:disabled {
+    background: #6c757d;
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
+  .match-versus-mobile {
+    background: var(--secondary-blue);
+  }
+
+  .date-edit-mobile {
+    background: #17a2b8;
+  }
+
+  .location-edit-mobile {
+    background: #ffc107;
+    color: #212529;
+  }
+
+  .delete-btn-mobile {
+    background: #dc3545;
   }
 
   .stats-row {
-    flex-wrap: wrap;
+    display: none; /* Ocultar estadísticas en móvil */
+  }
+
+  .desktop-header {
+    display: none; /* Ocultar título en móvil */
   }
 
   .actions-row {
@@ -2406,5 +2905,70 @@ onUnmounted(() => {
   .stat-item {
     padding: 0.75rem 1rem;
   }
+}
+
+/* Estilos para el botón de confirmación */
+.confirm-btn {
+  background: rgba(128, 128, 128, 0.1);
+  color: var(--app-text-secondary);
+  border: 2px solid rgba(128, 128, 128, 0.3);
+  transition: all var(--transition-normal);
+}
+
+.confirm-btn:hover {
+  background: rgba(76, 175, 80, 0.1);
+  border-color: rgba(76, 175, 80, 0.5);
+  color: #4caf50;
+}
+
+.confirm-btn.confirmed {
+  background: rgba(76, 175, 80, 0.1);
+  border-color: #4caf50;
+  color: #4caf50;
+}
+
+.confirm-btn.confirmed:hover {
+  background: rgba(244, 67, 54, 0.1);
+  border-color: rgba(244, 67, 54, 0.5);
+  color: #f44336;
+}
+
+/* Estilos móviles para el botón de confirmación */
+.confirm-btn-mobile {
+  padding: 0.4rem 0.8rem;
+  background: rgba(128, 128, 128, 0.1);
+  color: var(--app-text-secondary);
+  border: 1px solid rgba(128, 128, 128, 0.3);
+  border-radius: var(--border-radius-md);
+  font-size: 0.75rem;
+  font-weight: 500;
+  transition: all var(--transition-normal);
+  margin-bottom: 0.5rem;
+}
+
+.confirm-btn-mobile:hover {
+  background: rgba(76, 175, 80, 0.1);
+  border-color: rgba(76, 175, 80, 0.5);
+  color: #4caf50;
+}
+
+.confirm-btn-mobile.confirmed {
+  background: rgba(76, 175, 80, 0.15);
+  border-color: #4caf50;
+  color: #4caf50;
+}
+
+.confirm-btn-mobile.confirmed:hover {
+  background: rgba(244, 67, 54, 0.1);
+  border-color: rgba(244, 67, 54, 0.5);
+  color: #f44336;
+}
+
+/* Actualizar status para confirmación */
+.status-badge.confirmed,
+.status-badge-mobile.confirmed {
+  background: rgba(76, 175, 80, 0.15);
+  color: #4caf50;
+  border-color: #4caf50;
 }
 </style>

@@ -64,6 +64,15 @@ const router = createRouter({
       },
     },
     {
+      path: '/admin/finances',
+      name: 'admin-finances',
+      component: () => import('../views/FinancialManagement.vue'),
+      meta: {
+        requiresAuth: true,
+        requiredRole: 'admin',
+      },
+    },
+    {
       path: '/tournament/:id',
       name: 'tournament-detail',
       component: () => import('../views/TournamentDetail.vue'),

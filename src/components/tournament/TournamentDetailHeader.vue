@@ -6,7 +6,7 @@
       <div class="hero-overlay"></div>
     </div>
     <div class="hero-content">
-      <div class="tournament-logo-hero">
+      <div class="tournament-logo-hero desktop-logo">
         <img :src="tournament?.bannerPath ?? '/images/torneo_encurso_M.jpg'" :alt="tournament?.name"
           @error="handleImageError">
         <div class="logo-badge">
@@ -19,7 +19,13 @@
           <span>EN VIVO</span>
         </div>
         <h1>{{ tournament?.name }}</h1>
-        <div class="tournament-meta-hero">
+      </div>
+    </div>
+
+    <!-- Footer con información detallada del torneo -->
+    <div class="tournament-footer">
+      <div class="footer-content">
+        <div class="tournament-meta-footer">
           <div class="meta-item">
             <span class="meta-icon">👥</span>
             <span>{{ tournament?.maxTeams || 16 }} equipos</span>
@@ -33,13 +39,20 @@
             <span>{{ getTournamentPhase(tournament) }}</span>
           </div>
         </div>
-        <div class="progress-hero">
+        <div class="progress-footer">
           <div class="progress-info">
             <span>Progreso del torneo</span>
             <span>{{ getTournamentProgress(tournament) }}%</span>
           </div>
-          <div class="progress-bar-hero">
+          <div class="progress-bar-footer">
             <div class="progress-fill" :style="{ width: getTournamentProgress(tournament) + '%' }"></div>
+          </div>
+        </div>
+        <div class="tournament-logo-hero mobile-logo">
+          <img :src="tournament?.bannerPath ?? '/images/torneo_encurso_M.jpg'" :alt="tournament?.name"
+            @error="handleImageError">
+          <div class="logo-badge">
+            <span>2ª ED.</span>
           </div>
         </div>
       </div>
@@ -129,10 +142,10 @@ const handleImageError = (event: Event) => {
 </script>
 
 <style scoped>
-/* Hero Section Mejorado */
+/* Hero Section Compacto */
 .tournament-hero {
   position: relative;
-  height: 400px;
+  height: 200px; /* Reducido para dar más espacio al calendario */
   overflow: hidden;
 }
 
@@ -185,6 +198,14 @@ const handleImageError = (event: Event) => {
   box-shadow: 0 10px 30px rgba(255, 193, 7, 0.4);
 }
 
+.mobile-logo {
+  display: none; /* Oculto por defecto en desktop */
+}
+
+.desktop-logo {
+  display: block; /* Visible por defecto en desktop */
+}
+
 .tournament-logo-hero img {
   width: 100%;
   height: 100%;
@@ -233,17 +254,34 @@ const handleImageError = (event: Event) => {
 }
 
 .tournament-info-hero h1 {
-  font-size: 3rem;
+  font-size: 2.5rem; /* Reducido para header compacto */
   font-weight: 700;
-  margin: 0 0 1.5rem 0;
+  margin: 0;
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
   line-height: 1.2;
 }
 
-.tournament-meta-hero {
+/* Footer con información detallada */
+.tournament-footer {
+  background: var(--app-bg-primary);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 2rem 0;
+  margin-top: 2rem;
+}
+
+.footer-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.tournament-meta-footer {
   display: flex;
   gap: 2rem;
-  margin-bottom: 2rem;
+  justify-content: center;
   flex-wrap: wrap;
 }
 
@@ -253,14 +291,16 @@ const handleImageError = (event: Event) => {
   gap: 0.5rem;
   font-size: 1rem;
   font-weight: 500;
+  color: var(--text-primary);
 }
 
 .meta-icon {
   font-size: 1.2rem;
 }
 
-.progress-hero {
-  max-width: 400px;
+.progress-footer {
+  max-width: 500px;
+  margin: 0 auto;
 }
 
 .progress-info {
@@ -270,9 +310,13 @@ const handleImageError = (event: Event) => {
   margin-bottom: 0.5rem;
   font-size: 0.9rem;
   font-weight: 500;
+  color: var(--text-primary);
 }
 
-.progress-bar-hero {
+.progress-bar-footer {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.2);
+.progress-bar-footer {
   height: 8px;
   background: rgba(255, 255, 255, 0.2);
   border-radius: 4px;
@@ -345,11 +389,34 @@ const handleImageError = (event: Event) => {
 
 @media (max-width: 768px) {
   .tournament-hero {
-    height: 300px;
+    height: 150px; /* Más compacto en móvil */
   }
 
   .hero-content {
-    padding: 1.5rem 1rem;
+    padding: 1rem;
+  }
+
+  .desktop-logo {
+    display: none; /* Ocultar logo en móvil */
+  }
+
+  .tournament-info-hero h1 {
+    font-size: 1.8rem;
+  }
+
+  .tournament-footer {
+    margin-top: 1rem;
+    padding: 1.5rem 0;
+  }
+
+  .footer-content {
+    padding: 0 1rem;
+    text-align: center;
+  }
+
+  .mobile-logo {
+    display: block; /* Mostrar logo en el footer móvil */
+    margin: 0 auto;
   }
 
   .tournament-logo-hero {
@@ -357,11 +424,7 @@ const handleImageError = (event: Event) => {
     height: 80px;
   }
 
-  .tournament-info-hero h1 {
-    font-size: 2rem;
-  }
-
-  .tournament-meta-hero {
+  .tournament-meta-footer {
     flex-direction: column;
     gap: 1rem;
   }
@@ -369,17 +432,16 @@ const handleImageError = (event: Event) => {
 
 @media (max-width: 480px) {
   .tournament-hero {
-    height: 250px;
+    height: 120px; /* Muy compacto en móvil pequeño */
   }
 
   .hero-content {
-    padding: 1rem;
-    gap: 1.5rem;
+    padding: 0.75rem;
+    gap: 1rem;
   }
 
-  .tournament-logo-hero {
-    width: 60px;
-    height: 60px;
+  .desktop-logo {
+    display: none;
   }
 
   .tournament-info-hero h1 {
@@ -390,11 +452,24 @@ const handleImageError = (event: Event) => {
     font-size: 0.75rem;
     padding: 6px 12px;
   }
+
+  .tournament-footer {
+    padding: 1rem 0;
+  }
+
+  .mobile-logo {
+    display: block;
+    margin: 0 auto;
+  }
+
+  .tournament-logo-hero {
+    width: 60px;
+    height: 60px;
+  }
+  }
 }
 
-@keyframes pulse {
-
-  0%,
+@keyframes pulse {  0%,
   100% {
     opacity: 1;
   }
