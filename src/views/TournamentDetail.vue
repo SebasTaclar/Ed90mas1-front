@@ -20,7 +20,8 @@
 
           <!-- Sección: Clasificación -->
           <TournamentClassificationSection v-else-if="activeSection === 'clasificacion'"
-            :tournament="selectedTournament" />
+            :tournament="selectedTournament"
+            :tournament-teams="tournamentTeams" />
 
           <!-- Sección: Rankings y encuestas -->
           <TournamentRankingsSection v-else-if="activeSection === 'rankings'" />
@@ -37,10 +38,8 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useTournaments } from '@/composables/useTournaments'
-import { useTeams } from '@/composables/useTeams'
 import { useFixtures } from '@/composables/useFixtures'
 import type { Tournament } from '@/types/TournamentType'
-import type { Team } from '@/types/TeamType'
 import type { Match } from '@/services/matchesService'
 
 // Importar componentes
@@ -55,12 +54,20 @@ import TournamentMediaSection from '@/components/tournament/TournamentMediaSecti
 const route = useRoute()
 const router = useRouter()
 const { tournaments, loadTournaments } = useTournaments()
-const { teams, loadTeams } = useTeams()
 const { loadTournamentMatches } = useFixtures()
+
+// Tipo para equipo con información de grupo
+interface TeamWithGroup {
+  id: number
+  name: string
+  logoPath?: string | null
+  groupId?: number
+  groupName?: string
+}
 
 // Estado reactivo
 const activeSection = ref('cronograma')
-const tournamentTeams = ref<Team[]>([])
+const tournamentTeams = ref<TeamWithGroup[]>([])
 const selectedTournament = ref<Tournament | null>(null)
 const tournamentMatches = ref<Match[]>([])
 const matchesLoading = ref(false)
@@ -97,13 +104,37 @@ const loadTournamentTeams = async () => {
   }
 
   try {
-    await loadTeams()
-    // Filtrar equipos por torneo usando la relación teamTournaments
-    tournamentTeams.value = teams.value.filter(team =>
-      team.teamTournaments?.some(tt => tt.tournamentId === selectedTournament.value?.id)
-    )
+    // Primero cargar los matches para obtener los equipos con grupos
+    await loadTournamentMatchesData()
+
+    // Extraer equipos únicos de los matches con su información de grupo
+    const teamsMap = new Map<number, TeamWithGroup>()
+
+    tournamentMatches.value.forEach(match => {
+      if (match.homeTeam) {
+        teamsMap.set(match.homeTeam.id, {
+          id: match.homeTeam.id,
+          name: match.homeTeam.name,
+          logoPath: match.homeTeam.logoPath,
+          groupId: match.groupId,
+          groupName: match.group?.groupName
+        })
+      }
+
+      if (match.awayTeam) {
+        teamsMap.set(match.awayTeam.id, {
+          id: match.awayTeam.id,
+          name: match.awayTeam.name,
+          logoPath: match.awayTeam.logoPath,
+          groupId: match.groupId,
+          groupName: match.group?.groupName
+        })
+      }
+    })
+
+    tournamentTeams.value = Array.from(teamsMap.values())
   } catch (error) {
-    console.error('Error cargando equipos del torneo:', error)
+    console.error('Error cargando equipos del torneo desde calendario:', error)
   }
 }// Cargar matches del torneo específico
 const loadTournamentMatchesData = async () => {
@@ -170,7 +201,11 @@ onMounted(async () => {
 
 @media (max-width: 768px) {
   .tournament-detail {
-    padding-top: 70px;
+    padding-top: 150px; /* 70px (header) + 80px (navegación) */
+  }
+
+  .content-section {
+    padding-top: 2rem;
   }
 
   .container {

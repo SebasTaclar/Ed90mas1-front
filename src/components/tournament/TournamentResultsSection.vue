@@ -1,13 +1,13 @@
 <template>
  <div class="section-content">
-  <div class="section-header">
+  <div class="section-header desktop-header">
    <h2>⚽ Resultados</h2>
    <p class="section-description">Resultados de todos los partidos disputados</p>
   </div>
 
   <div class="results-container">
-   <!-- Estadísticas generales -->
-   <div class="stats-grid">
+   <!-- Estadísticas generales (solo desktop) -->
+   <div class="stats-grid desktop-stats">
     <div class="stat-card">
      <div class="stat-icon">⚽</div>
      <div class="stat-content">
@@ -55,38 +55,118 @@
      <p>Los resultados aparecerán aquí cuando se completen los partidos.</p>
     </div>
 
-    <!-- Lista de resultados -->
-    <div v-else class="results-list">
-     <div v-for="match in recentResults" :key="match.id" class="result-card">
-      <div class="match-info">
-       <span class="match-date">{{ formatMatchDate(match.matchDate, match.scheduledDate) }}</span>
-       <span class="match-round">{{ match.round || 'Jornada' }}</span>
-      </div>
-      <div class="match-result">
-       <div class="team-result">
-        <img :src="match.homeTeam?.logoPath || '/images/logo.png'"
-             :alt="match.homeTeam?.name || 'Equipo Local'"
-             @error="handleTeamImageError">
-        <span class="team-name">{{ match.homeTeam?.name || 'Equipo Local' }}</span>
-        <span class="team-score" :class="getWinnerClass(match.homeScore || 0, match.awayScore || 0)">
-          {{ match.homeScore || 0 }}
-        </span>
+    <!-- Lista de resultados y cards móviles -->
+    <div v-else>
+      <!-- Desktop Results -->
+      <div class="results-list desktop-results">
+       <div v-for="match in recentResults" :key="match.id" class="result-card">
+        <div class="match-info">
+         <span class="match-date">{{ formatMatchDate(match.matchDate, match.scheduledDate) }}</span>
+         <span class="match-round">{{ match.round || 'Jornada' }}</span>
+        </div>
+        <div class="match-result">
+         <div class="team-result">
+          <img :src="match.homeTeam?.logoPath || '/images/logo.png'"
+               :alt="match.homeTeam?.name || 'Equipo Local'"
+               @error="handleTeamImageError">
+          <span class="team-name">{{ match.homeTeam?.name || 'Equipo Local' }}</span>
+          <span class="team-score" :class="getWinnerClass(match.homeScore || 0, match.awayScore || 0)">
+            {{ match.homeScore || 0 }}
+          </span>
+         </div>
+         <div class="result-separator">-</div>
+         <div class="team-result">
+          <span class="team-score" :class="getWinnerClass(match.awayScore || 0, match.homeScore || 0)">
+            {{ match.awayScore || 0 }}
+          </span>
+          <span class="team-name">{{ match.awayTeam?.name || 'Equipo Visitante' }}</span>
+          <img :src="match.awayTeam?.logoPath || '/images/logo.png'"
+               :alt="match.awayTeam?.name || 'Equipo Visitante'"
+               @error="handleTeamImageError">
+         </div>
+        </div>
+        <div class="match-actions">
+         <button class="action-btn" @click="viewMatchDetails(match)">Ver detalles</button>
+        </div>
        </div>
-       <div class="result-separator">-</div>
-       <div class="team-result">
-        <span class="team-score" :class="getWinnerClass(match.awayScore || 0, match.homeScore || 0)">
-          {{ match.awayScore || 0 }}
-        </span>
-        <span class="team-name">{{ match.awayTeam?.name || 'Equipo Visitante' }}</span>
-        <img :src="match.awayTeam?.logoPath || '/images/logo.png'"
-             :alt="match.awayTeam?.name || 'Equipo Visitante'"
-             @error="handleTeamImageError">
+      </div>
+
+      <!-- Cards móviles compactas -->
+      <div class="results-mobile-container">
+       <div v-for="match in recentResults" :key="'mobile-' + match.id" class="result-card-mobile">
+        <!-- Header del resultado -->
+        <div class="result-header-mobile">
+          <div class="match-date-mobile">
+            <span class="date">{{ formatMatchDate(match.matchDate, match.scheduledDate) }}</span>
+            <span class="round-mobile">{{ match.round || 'Jornada' }}</span>
+          </div>
+          <div class="match-status-mobile">
+            <span class="status-badge-result">FINALIZADO</span>
+          </div>
+        </div>
+
+        <!-- Resultado principal -->
+        <div class="match-score-mobile">
+          <div class="team-score-mobile home">
+            <img :src="match.homeTeam?.logoPath || '/images/logo.png'"
+                 :alt="match.homeTeam?.name"
+                 class="team-logo-result"
+                 @error="handleTeamImageError">
+            <span class="team-name-result">{{ match.homeTeam?.name || 'Local' }}</span>
+            <div class="final-score" :class="getWinnerClass(match.homeScore || 0, match.awayScore || 0)">
+              {{ match.homeScore || 0 }}
+            </div>
+          </div>
+
+          <div class="vs-result">
+            <span>VS</span>
+            <div class="final-result">{{ match.homeScore || 0 }} - {{ match.awayScore || 0 }}</div>
+          </div>
+
+          <div class="team-score-mobile away">
+            <img :src="match.awayTeam?.logoPath || '/images/logo.png'"
+                 :alt="match.awayTeam?.name"
+                 class="team-logo-result"
+                 @error="handleTeamImageError">
+            <span class="team-name-result">{{ match.awayTeam?.name || 'Visitante' }}</span>
+            <div class="final-score" :class="getWinnerClass(match.awayScore || 0, match.homeScore || 0)">
+              {{ match.awayScore || 0 }}
+            </div>
+          </div>
+        </div>
+
+        <!-- Información adicional del partido -->
+        <div class="result-footer-mobile">
+          <!-- Goleadores por equipo -->
+          <div class="scorers-section">
+            <!-- Goleadores equipo local -->
+            <div class="team-scorers home-scorers">
+              <div v-for="scorer in getTeamScorers(match, 'home')" :key="scorer.id" class="scorer-item">
+                {{ scorer.name }} {{ scorer.minute }}'
+              </div>
+            </div>
+
+            <!-- Ícono central -->
+            <div class="match-center-icon">
+              ⚽
+            </div>
+
+            <!-- Goleadores equipo visitante -->
+            <div class="team-scorers away-scorers">
+              <div v-for="scorer in getTeamScorers(match, 'away')" :key="scorer.id" class="scorer-item">
+                {{ scorer.name }} {{ scorer.minute }}'
+              </div>
+            </div>
+          </div>
+
+          <div class="result-actions-mobile">
+            <button @click="viewMatchDetails(match)" class="details-btn-mobile">
+              📊 Ver detalles
+            </button>
+          </div>
+        </div>
        </div>
       </div>
-      <div class="match-actions">
-       <button class="action-btn" @click="viewMatchDetails(match)">Ver detalles</button>
-      </div>
-     </div>
     </div>
    </div>
   </div>
@@ -98,6 +178,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useFixtures } from '@/composables/useFixtures'
 import type { Tournament } from '@/types/TournamentType'
 import type { Match } from '@/services/matchesService'
+import { matchEventsService, type MatchEventWithRelations, MatchEventType } from '@/services/matchEventsService'
 
 interface Props {
   tournament?: Tournament | null
@@ -111,6 +192,7 @@ const { loadTournamentMatches } = useFixtures()
 // Estado reactivo
 const matches = ref<Match[]>([])
 const loading = ref(false)
+const matchEvents = ref<Record<number, MatchEventWithRelations[]>>({})
 
 // Computed para estadísticas generales
 const totalGoals = computed(() => {
@@ -189,6 +271,63 @@ const viewMatchDetails = (match: Match) => {
   })
 }
 
+// Funciones para goleadores móviles
+const getTeamScorers = (match: Match, team: 'home' | 'away') => {
+  // Obtener eventos del partido desde el estado reactivo
+  const events = matchEvents.value[match.id!] || []
+
+  // Filtrar solo eventos de gol para el equipo especificado
+  const goalEvents = events.filter((event: MatchEventWithRelations) => {
+    const isGoalEvent = [MatchEventType.GOAL, MatchEventType.PENALTY_GOAL].includes(event.eventType)
+    const teamMatches = team === 'home' ?
+      event.teamId === match.homeTeamId :
+      event.teamId === match.awayTeamId
+
+    return isGoalEvent && teamMatches
+  })
+
+  // Mapear eventos a formato de goleadores
+  return goalEvents
+    .map((event: MatchEventWithRelations) => ({
+      id: event.id.toString(),
+      name: `${event.player.firstName.charAt(0)}. ${event.player.lastName}`,
+      minute: event.extraTime ? `${event.minute}+${event.extraTime}` : event.minute.toString()
+    }))
+    .sort((a: { minute: string }, b: { minute: string }) => {
+      // Ordenar por minuto (considerando tiempo extra)
+      const minuteA = parseInt(a.minute.split('+')[0])
+      const minuteB = parseInt(b.minute.split('+')[0])
+      return minuteA - minuteB
+    })
+}
+
+// Función para cargar eventos de partidos
+const loadMatchEvents = async (matchIds: number[]) => {
+  try {
+    const eventPromises = matchIds.map(async (matchId) => {
+      try {
+        const events = await matchEventsService.getMatchEvents(matchId)
+        return { matchId, events }
+      } catch (error) {
+        console.error(`Error cargando eventos del partido ${matchId}:`, error)
+        return { matchId, events: [] }
+      }
+    })
+
+    const results = await Promise.all(eventPromises)
+
+    // Actualizar el estado reactivo con los eventos
+    const eventsMap: Record<number, MatchEventWithRelations[]> = {}
+    results.forEach(({ matchId, events }) => {
+      eventsMap[matchId] = events
+    })
+
+    matchEvents.value = eventsMap
+  } catch (error) {
+    console.error('Error cargando eventos de partidos:', error)
+  }
+}
+
 // Cargar datos
 const loadMatchesData = async () => {
   if (!props.tournament?.id) return
@@ -197,6 +336,16 @@ const loadMatchesData = async () => {
   try {
     const matchesData = await loadTournamentMatches(props.tournament.id)
     matches.value = matchesData || []
+
+    // Cargar eventos de partidos completados
+    const completedMatchIds = (matchesData || [])
+      .filter(match => match.status === 'completed' || match.status === 'finished')
+      .map(match => match.id!)
+      .filter(id => id !== undefined)
+
+    if (completedMatchIds.length > 0) {
+      await loadMatchEvents(completedMatchIds)
+    }
   } catch (error) {
     console.error('Error cargando partidos:', error)
     matches.value = []
@@ -555,6 +704,232 @@ watch(() => props.tournament?.id, async (newId) => {
  padding: 3rem;
  gap: 1rem;
  text-align: center;
+}
+
+/* Responsive Móvil */
+@media (max-width: 768px) {
+  .desktop-header {
+    display: none; /* Ocultar título en móvil */
+  }
+
+  .desktop-stats {
+    display: none; /* Ocultar estadísticas en móvil */
+  }
+
+  .desktop-results {
+    display: none; /* Ocultar resultados desktop en móvil */
+  }
+
+  .results-mobile-container {
+    display: flex !important;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .result-card-mobile {
+    background: var(--app-bg-primary);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    transition: all 0.3s ease;
+    margin-bottom: 1rem;
+  }
+
+  .result-card-mobile:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  .result-header-mobile {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: var(--app-bg-secondary);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .match-date-mobile {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+  }
+
+  .match-date-mobile .date {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+  }
+
+  .round-mobile {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+  }
+
+  .status-badge-result {
+    background: #28a745;
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+
+  .match-score-mobile {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem;
+    gap: 0.75rem;
+  }
+
+  .team-score-mobile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1;
+    text-align: center;
+  }
+
+  .team-logo-result {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    object-fit: cover;
+  }
+
+  .team-name-result {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.2;
+    text-align: center;
+  }
+
+  .final-score {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    padding: 0.25rem 0.5rem;
+    min-width: 50px;
+    text-align: center;
+  }
+
+  .final-score.winner {
+    color: #28a745;
+    border-color: #28a745;
+    background: rgba(40, 167, 69, 0.1);
+  }
+
+  .vs-result {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    background: var(--app-bg-secondary);
+    border-radius: 8px;
+    min-width: 60px;
+  }
+
+  .vs-result span {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+  }
+
+  .final-result {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  .result-footer-mobile {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: var(--app-bg-secondary);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .scorers-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 0.5rem 0;
+  }
+
+  .team-scorers {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .home-scorers {
+    align-items: flex-start;
+  }
+
+  .away-scorers {
+    align-items: flex-end;
+    text-align: right;
+  }
+
+  .scorer-item {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+    line-height: 1.3;
+  }
+
+  .match-center-icon {
+    font-size: 1rem;
+    color: var(--text-secondary);
+    opacity: 0.6;
+    padding: 0 0.5rem;
+    display: flex;
+    align-items: center;
+  }
+
+  .result-actions-mobile {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 0.5rem;
+  }
+
+  .details-btn-mobile {
+    padding: 0.5rem 1rem;
+    background: var(--primary-blue);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+  }
+
+  .details-btn-mobile:hover {
+    background: var(--tertiary-blue);
+    transform: translateY(-1px);
+  }
+
+  .section-content {
+    padding: 1rem;
+  }
+}
+
+@media (min-width: 769px) {
+  .results-mobile-container {
+    display: none; /* Ocultar cards móviles en desktop */
+  }
 }
 
 .empty-icon {
