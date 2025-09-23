@@ -26,6 +26,7 @@ export interface Match {
   awayScore?: number
   round?: string
   matchNumber?: number
+  confirmed?: boolean // Campo para confirmar partido
   startTime?: string
   endTime?: string
   createdAt?: string
@@ -181,6 +182,9 @@ export const matchesService = {
   // Actualizar un partido
   async updateMatch(matchId: number, updates: Partial<Match>): Promise<Match> {
     try {
+      console.log(`Enviando PUT a: ${API_BASE}/matches/${matchId}`)
+      console.log('Updates:', updates)
+
       const response = await fetch(`${API_BASE}/matches/${matchId}`, {
         method: 'PUT',
         headers: {
@@ -189,14 +193,35 @@ export const matchesService = {
         body: JSON.stringify(updates),
       })
 
+      console.log('Response status:', response.status)
+      console.log('Response ok:', response.ok)
+
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.message || 'Error updating match')
+        const errorText = await response.text()
+        console.error('Error response text:', errorText)
+
+        let errorData
+        try {
+          errorData = JSON.parse(errorText)
+        } catch {
+          errorData = { message: errorText || `HTTP ${response.status}` }
+        }
+
+        throw new Error(errorData.message || `HTTP Error ${response.status}: ${errorText}`)
       }
 
-      return await response.json()
+      const result = await response.json()
+      console.log('Success result:', result)
+      return result
+
     } catch (error) {
       console.error('Error updating match:', error)
+
+      // Si es un error de red o conexión
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new Error('Error de conexión. Verifica tu conexión a internet y que el servidor esté funcionando.')
+      }
+
       throw error
     }
   },
